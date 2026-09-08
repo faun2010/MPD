@@ -158,18 +158,12 @@ SetupSampleFormat(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwparams,
 	return err;
 }
 
-HwResult
-SetupHw(snd_pcm_t *pcm,
-	unsigned buffer_time, unsigned period_time,
-	AudioFormat &audio_format, PcmExport::Params &params)
+unsigned
+ConfigureHwFormat(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwparams,
+		  AudioFormat &audio_format, PcmExport::Params &params)
 {
-	snd_pcm_hw_params_t *hwparams;
-	snd_pcm_hw_params_alloca(&hwparams);
-
 	int err;
-	unsigned int period_time_ro = period_time;
 
-	/* configure HW params */
 	err = snd_pcm_hw_params_any(pcm, hwparams);
 	if (err < 0)
 		throw Alsa::MakeError(err, "snd_pcm_hw_params_any() failed");
@@ -213,6 +207,22 @@ SetupHw(snd_pcm_t *pcm,
 
 	if (output_sample_rate != requested_sample_rate)
 		audio_format.sample_rate = params.CalcInputSampleRate(output_sample_rate);
+
+	return output_sample_rate;
+}
+
+HwResult
+SetupHw(snd_pcm_t *pcm,
+	unsigned buffer_time, unsigned period_time,
+	AudioFormat &audio_format, PcmExport::Params &params)
+{
+	snd_pcm_hw_params_t *hwparams;
+	snd_pcm_hw_params_alloca(&hwparams);
+
+	ConfigureHwFormat(pcm, hwparams, audio_format, params);
+
+	int err;
+	unsigned int period_time_ro = period_time;
 
 	snd_pcm_uframes_t buffer_size_min, buffer_size_max;
 	snd_pcm_hw_params_get_buffer_size_min(hwparams, &buffer_size_min);
