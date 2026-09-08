@@ -486,7 +486,14 @@ decoder_run_file(DecoderBridge &bridge, const char *uri_utf8, Path path_fs)
 		}
 
 		throw;
+	} catch (const std::runtime_error &e) {
+		const auto result = TryContainerDecoder(bridge, path_fs, suffix);
+		if (IsFinalDecodeResult(result))
+			return result;
 	}
+
+	if (input_stream == nullptr && !StringIsEqualIgnoreCase(suffix, "dff") && !StringIsEqualIgnoreCase(suffix, "iso"))
+		return DecodeResult::NO_PLUGIN;
 
 	assert(input_stream);
 

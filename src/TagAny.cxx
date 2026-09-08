@@ -12,6 +12,7 @@
 #include "client/Client.hxx"
 #include "protocol/Ack.hxx"
 #include "fs/AllocatedPath.hxx"
+#include "fs/FileSystem.hxx"
 #include "input/InputStream.hxx"
 #include "uri/Extract.hxx"
 #include "util/ScopeExit.hxx"
@@ -40,7 +41,9 @@ TagScanFile(const Path path_fs, TagHandler &handler)
 	if (!ScanFileTagsNoGeneric(path_fs, handler))
 		throw ProtocolError(ACK_ERROR_NO_EXIST, "Failed to load file");
 
-	ScanGenericTags(path_fs, handler);
+	if (FileExists(path_fs)) {
+		ScanGenericTags(path_fs, handler);
+	}
 }
 
 #ifdef ENABLE_DATABASE
