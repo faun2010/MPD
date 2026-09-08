@@ -319,12 +319,31 @@ enable_database = get_option('database')
 enable_inotify = get_option('inotify') and is_linux and enable_database
 conf.set('ENABLE_INOTIFY', enable_inotify)
 
+enable_sacdiso = get_option('sacdiso')
+conf.set('ENABLE_SACDISO', enable_sacdiso)
+
+enable_dvdaiso = get_option('dvdaiso')
+conf.set('ENABLE_DVDAISO', enable_dvdaiso)
+
 inc = include_directories(
   'src',
 
   # for the generated config.h
   '.',
 )
+
+if enable_sacdiso or enable_dvdaiso
+  inc = include_directories(
+    'src',
+	'.',
+	'src/lib/sacdiso',
+	'src/lib/sacdiso/libdstdec',
+	'src/lib/sacdiso/libdstdec/binding',
+	'src/lib/sacdiso/libdstdec/decoder',
+	'src/lib/dvdaiso',
+	'src/lib/dvdaiso/udf',
+  )
+endif
 
 subdir('src/lib/fmt')
 
@@ -531,6 +550,19 @@ subdir('src/filter')
 subdir('src/mixer')
 subdir('src/output')
 subdir('src/lib/xiph')
+
+if enable_sacdiso or enable_dvdaiso
+  ixml_dep = c_compiler.find_library('ixml', required: true)
+endif
+
+if enable_sacdiso
+  subdir('src/lib/sacdiso')
+endif
+
+if enable_dvdaiso
+  subdir('src/lib/dvdaiso')
+endif
+
 subdir('src/decoder')
 subdir('src/encoder')
 subdir('src/song')
