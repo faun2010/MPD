@@ -426,6 +426,78 @@ flac
 
 Decodes FLAC files using libFLAC.
 
+.. _decoder_sacdiso:
+
+sacdiso
+-------
+
+Decodes the audio tracks of Super Audio CD ISO images (:file:`*.iso`,
+:file:`*.dat`).  Each image is added to the database as a container and
+its tracks appear as :file:`album.iso/2C_AUDIO__TRACK001.iso` (stereo
+area) or :file:`album.iso/MC_AUDIO__TRACK001.iso` (multichannel area).
+Both plain DSD and DST-compressed tracks are supported; the output is
+:ref:`DSD <dsd>`.  Text and artwork metadata are read from the disc and
+optionally from a metabase XML file.  Requires *libixml* (part of
+*libupnp*); build with :code:`-Dsacdiso=enabled`.  When this plugin is
+built, the :ref:`dsdiff <decoder_dsdiff>` plugin is provided by the same
+code base and accepts the settings below as well.
+
+.. list-table::
+   :widths: 20 80
+   :header-rows: 1
+
+   * - Setting
+     - Description
+   * - **playable_area stereo|multichannel**
+     - Only expose tracks of this area.  By default both areas are listed.
+   * - **edited_master yes|no**
+     - Hide the individual tracks and expose the whole area as one
+       "edited master" track.  Default is no.
+   * - **single_track yes|no**
+     - Expose the whole area as a single track.  Default is no.
+   * - **lsbitfirst yes|no**
+     - Decode the least significant bit first.  Default is no.
+   * - **tags_path PATH**
+     - Directory with metabase XML files providing tags for the discs.
+   * - **tags_with_iso yes|no**
+     - Also look for the metabase XML file next to the ISO image.
+       Default is no.
+   * - **use_stdio yes|no**
+     - Read the image through the C stdio layer instead of MPD's input
+       stream.  Default is yes.
+
+.. _decoder_dvdaiso:
+
+dvdaiso
+-------
+
+Decodes DVD-Audio ISO images: PCM and MLP (Meridian Lossless Packing)
+audio zones are exposed as tracks of the container, like the
+:ref:`sacdiso <decoder_sacdiso>` plugin does.  Requires *libixml*; build
+with :code:`-Ddvdaiso=enabled`.
+
+.. list-table::
+   :widths: 20 80
+   :header-rows: 1
+
+   * - Setting
+     - Description
+   * - **playable_area stereo|multichannel**
+     - Only expose tracks of this area.  By default both areas are listed.
+   * - **no_downmixes yes|no**
+     - Skip downmixed duplicates of multichannel tracks.  Default is yes.
+   * - **no_short_tracks yes|no**
+     - Skip tracks shorter than two seconds.  Default is yes.
+   * - **no_untagged_tracks yes|no**
+     - Skip tracks without any tag.  Default is yes.
+   * - **tags_path PATH**
+     - Directory with metabase XML files providing tags for the discs.
+   * - **tags_with_iso yes|no**
+     - Also look for the metabase XML file next to the ISO image.
+       Default is no.
+   * - **use_stdio yes|no**
+     - Read the image through the C stdio layer.  Default is yes.
+
 .. _decoder_dsdiff:
 
 dsdiff
