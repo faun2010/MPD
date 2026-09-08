@@ -1,0 +1,32 @@
+music_directory "~/Music"
+playlist_directory "~/.local/state/mpd-sacd/playlists"
+db_file "~/.local/state/mpd-sacd/database"
+state_file "~/.local/state/mpd-sacd/state"
+bind_to_address "127.0.0.1"
+port "6600"
+zeroconf_enabled "no"
+replaygain "off"
+
+decoder {
+    plugin "sacdiso"
+    playable_area "stereo"
+    use_stdio "yes"
+}
+decoder {
+    plugin "dsdiff"
+    playable_area "stereo"
+    use_stdio "yes"
+}
+audio_output {
+    type "alsa"
+    name "USB DAC"
+    # Replace USB with the card identifier shown by aplay -l.
+    device "hw:CARD=USB,DEV=0"
+    mixer_type "none"
+    dop "no"
+    # Shanling UA2 Plus: opt in after testing native DSD/PCM switching.
+    # Each bridge sends 500 ms of PCM silence at the DSD ALSA word rate.
+    # dsd_to_pcm_bridge "yes"
+    # pcm_to_dsd_bridge "yes"
+    # stop_dsd_silence "yes"
+}
