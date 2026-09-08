@@ -16,6 +16,7 @@ on:
     branches:
       - master
       - v0.24.x
+      - feat/sacd-update
   pull_request:
     paths-ignore:
       - 'AUTHORS'
@@ -31,6 +32,7 @@ on:
     branches:
       - master
       - v0.24.x
+      - feat/sacd-update
 
 permissions:
   contents: read #  to fetch code (actions/checkout)
@@ -85,7 +87,8 @@ jobs:
             $ANDROID_SDK_ROOT $ANDROID_NDK_LATEST_HOME \
             ${{matrix.abi}} \
             --buildtype=debugoptimized -Db_ndebug=true \
-            -Dwrap_mode=forcefallback 
+            -Dsacdiso=disabled -Ddvdaiso=disabled \
+            -Dwrap_mode=forcefallback
 
       # If any library was built (i.e. a library build directory exists),
       # save the cache, even if the cache was restored successfully (which

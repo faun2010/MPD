@@ -205,3 +205,10 @@ option('zeroconf', type: 'combo',
        choices: ['auto', 'avahi', 'bonjour', 'disabled'],
        value: 'auto',
        description: 'Zeroconf support')
+
+#
+# DVD-Audio & Super Audio CD ISO support
+#
+
+option('sacdiso', type: 'feature', description: 'Super Audio CD ISO decoder (needs libixml from libupnp)')
+option('dvdaiso', type: 'feature', description: 'DVD-Audio ISO decoder (needs libixml from libupnp)')

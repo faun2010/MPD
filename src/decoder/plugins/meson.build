@@ -5,11 +5,35 @@ decoder_plugins_dependencies = []
 
 if get_option('dsd')
   decoder_plugins_sources += [
-    'DsdiffDecoderPlugin.cxx',
     'DsfDecoderPlugin.cxx',
     'DsdLib.cxx',
   ]
   decoder_plugins_dependencies += libid3tag_dep
+endif
+
+if get_option('dsd') and not enable_sacdiso
+  decoder_plugins_sources += [
+    'DsdiffDecoderPlugin.cxx',
+  ]
+endif
+
+if enable_sacdiso
+  decoder_plugins_dependencies += sacdiso_dep
+  decoder_plugins_sources += [
+    'SacdIsoDecoderPlugin.cxx',
+  ]
+  if get_option('dsd')
+    decoder_plugins_sources += [
+      'DffDecoderPlugin.cxx',
+    ]
+  endif
+endif
+
+if enable_dvdaiso
+  decoder_plugins_dependencies += dvdaiso_dep
+  decoder_plugins_sources += [
+    'DvdaIsoDecoderPlugin.cxx',
+  ]
 endif
 
 if ffmpeg_dep.found()

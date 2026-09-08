@@ -19,6 +19,18 @@ struct HwResult {
 };
 
 /**
+ * Initialize and refine the access mode, sample format, channels and rate.
+ * This does not apply hardware parameters or prepare/start the PCM.
+ *
+ * @param audio_format updated to the negotiated input format
+ * @param params updated with the negotiated export packing
+ * @return the negotiated ALSA sample (word) rate
+ */
+unsigned
+ConfigureHwFormat(snd_pcm_t *pcm, snd_pcm_hw_params_t *hwparams,
+		  AudioFormat &audio_format, PcmExport::Params &params);
+
+/**
  * Wrapper for snd_pcm_hw_params().
  *
  * @param buffer_time the configured buffer time, or 0 if not configured

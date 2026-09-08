@@ -426,6 +426,78 @@ flac
 
 Decodes FLAC files using libFLAC.
 
+.. _decoder_sacdiso:
+
+sacdiso
+-------
+
+Decodes the audio tracks of Super Audio CD ISO images (:file:`*.iso`,
+:file:`*.dat`).  Each image is added to the database as a container and
+its tracks appear as :file:`album.iso/2C_AUDIO__TRACK001.iso` (stereo
+area) or :file:`album.iso/MC_AUDIO__TRACK001.iso` (multichannel area).
+Both plain DSD and DST-compressed tracks are supported; the output is
+:ref:`DSD <dsd>`.  Text and artwork metadata are read from the disc and
+optionally from a metabase XML file.  Requires *libixml* (part of
+*libupnp*); build with :code:`-Dsacdiso=enabled`.  When this plugin is
+built, the :ref:`dsdiff <decoder_dsdiff>` plugin is provided by the same
+code base and accepts the settings below as well.
+
+.. list-table::
+   :widths: 20 80
+   :header-rows: 1
+
+   * - Setting
+     - Description
+   * - **playable_area stereo|multichannel**
+     - Only expose tracks of this area.  By default both areas are listed.
+   * - **edited_master yes|no**
+     - Hide the individual tracks and expose the whole area as one
+       "edited master" track.  Default is no.
+   * - **single_track yes|no**
+     - Expose the whole area as a single track.  Default is no.
+   * - **lsbitfirst yes|no**
+     - Decode the least significant bit first.  Default is no.
+   * - **tags_path PATH**
+     - Directory with metabase XML files providing tags for the discs.
+   * - **tags_with_iso yes|no**
+     - Also look for the metabase XML file next to the ISO image.
+       Default is no.
+   * - **use_stdio yes|no**
+     - Read the image through the C stdio layer instead of MPD's input
+       stream.  Default is yes.
+
+.. _decoder_dvdaiso:
+
+dvdaiso
+-------
+
+Decodes DVD-Audio ISO images: PCM and MLP (Meridian Lossless Packing)
+audio zones are exposed as tracks of the container, like the
+:ref:`sacdiso <decoder_sacdiso>` plugin does.  Requires *libixml*; build
+with :code:`-Ddvdaiso=enabled`.
+
+.. list-table::
+   :widths: 20 80
+   :header-rows: 1
+
+   * - Setting
+     - Description
+   * - **playable_area stereo|multichannel**
+     - Only expose tracks of this area.  By default both areas are listed.
+   * - **no_downmixes yes|no**
+     - Skip downmixed duplicates of multichannel tracks.  Default is yes.
+   * - **no_short_tracks yes|no**
+     - Skip tracks shorter than two seconds.  Default is yes.
+   * - **no_untagged_tracks yes|no**
+     - Skip tracks without any tag.  Default is yes.
+   * - **tags_path PATH**
+     - Directory with metabase XML files providing tags for the discs.
+   * - **tags_with_iso yes|no**
+     - Also look for the metabase XML file next to the ISO image.
+       Default is no.
+   * - **use_stdio yes|no**
+     - Read the image through the C stdio layer.  Default is yes.
+
 .. _decoder_dsdiff:
 
 dsdiff
@@ -943,6 +1015,25 @@ The `Advanced Linux Sound Architecture (ALSA) <http://www.alsa-project.org/>`_ p
        ("stop" or "pause") in DSD mode (native DSD or DoP).  This is a
        workaround for some DACs which emit noise when stopping DSD
        playback.
+   * - **dsd_to_pcm_bridge yes|no**
+     - Before changing from native DSD to PCM at a different sample rate,
+       play 500 ms of silent 16-bit PCM at the previous native DSD stream's
+       ALSA word rate and channel count, drain it, then open the requested
+       PCM stream.  This separates the DSD/PCM mode change from the clock
+       change for devices which cannot perform both together reliably.
+       The device must support that intermediate PCM format exactly.
+       Defaults to no.  Does not change the playlist or resample the target
+       music, and does not apply to DoP, the first open, or PCM-to-DSD changes.
+   * - **pcm_to_dsd_bridge yes|no**
+     - Before changing from PCM to native DSD at a different ALSA word rate,
+       play 500 ms of silent 16-bit PCM at the target native DSD stream's
+       negotiated word rate and channel count, drain it, then open DSD.
+       This changes the clock while still in PCM mode.  Native DSD format
+       negotiation is queried before the bridge without applying hardware
+       parameters or starting DSD playback.  The device must support the
+       intermediate PCM format exactly.  Defaults to no; does not apply
+       to DoP, PCM fallback, or the first output open.  No prior DSD playback
+       is required, and the playlist and target music are unchanged.
    * - **allowed_formats F1 F2 ...**
      - Specifies a list of allowed audio formats, separated by a space. All items may contain asterisks as a wild card, and may be followed by "=dop" to enable DoP (DSD over PCM) for this particular format. The first matching format is used, and if none matches, MPD chooses the best fallback of this list.
        

@@ -31,13 +31,17 @@
 
 #ifdef ENABLE_DSD
 #include "util/AllocatedArray.hxx"
+#include "util/ScopeExit.hxx"
 #endif
 
 #include <alsa/asoundlib.h>
 
 #include <atomic>
+#include <algorithm>
+#include <chrono>
 #include <string>
 #include <forward_list>
+#include <thread>
 
 static const char default_device[] = "default";
 
@@ -154,6 +158,17 @@ class AlsaOutput final
 	 */
 	bool use_dsd;
 
+	/** Split native DSD to PCM mode and clock changes with a PCM stream. */
+	const bool dsd_to_pcm_bridge;
+	bool last_open_was_native_dsd = false;
+	unsigned last_native_dsd_rate = 0;
+	unsigned last_native_dsd_channels = 0;
+
+	/** Set the future native DSD word clock while still streaming PCM. */
+	const bool pcm_to_dsd_bridge;
+	bool last_open_was_pcm = false;
+	unsigned last_pcm_rate = 0;
+
 	/**
 	 * Play some silence before closing the output in DSD mode?
 	 * This is a workaround for some DACs which emit noise when
@@ -211,9 +226,9 @@ class AlsaOutput final
 	 * LockWaitWriteAvailable().  It will be reset by Cancel() and
 	 * Pause(), as documented by the #AudioOutput interface.
 	 *
-	 * Only initialized while the output is open.
+	 * Protected by #mutex, including while a PCM bridge is opening.
 	 */
-	bool interrupted;
+	bool interrupted = false;
 
 	/**
 	 * Close the ALSA PCM while playback is paused?  This defaults
@@ -287,6 +302,9 @@ private:
 	void Setup(AudioFormat &audio_format, PcmExport::Params &params);
 
 #ifdef ENABLE_DSD
+	void PlayPcmBridge(const char *direction, unsigned rate, unsigned channels);
+	void PreparePcmToDsdBridge(const AudioFormat &requested_format);
+
 	void SetupDop(AudioFormat audio_format,
 		      PcmExport::Params &params);
 #endif
@@ -447,6 +465,8 @@ AlsaOutput::AlsaOutput(EventLoop &_loop, const ConfigBlock &block)
 	 dop_setting(block.GetBlockValue("dop", false) ||
 		     /* legacy name from MPD 0.18 and older: */
 		     block.GetBlockValue("dsd_usb", false)),
+	 dsd_to_pcm_bridge(block.GetBlockValue("dsd_to_pcm_bridge", false)),
+	 pcm_to_dsd_bridge(block.GetBlockValue("pcm_to_dsd_bridge", false)),
 	 stop_dsd_silence(block.GetBlockValue("stop_dsd_silence", false)),
 #endif
 	close_on_pause(block.GetBlockValue("close_on_pause", true))
@@ -678,11 +698,226 @@ BestMatch(const std::forward_list<Alsa::AllowedFormat> &haystack,
 	return haystack.front();
 }
 
+#ifdef ENABLE_DSD
+
+void
+AlsaOutput::PlayPcmBridge(const char *direction, unsigned rate, unsigned channels)
+{
+	const snd_pcm_uframes_t total_frames = rate / 2;
+	if (total_frames == 0 || channels == 0 || channels > 32768)
+		throw std::runtime_error("Invalid PCM bridge format");
+
+	FmtInfo(alsa_output_domain,
+		"{} bridge: start S16 rate={} channels={} frames={}",
+		direction, rate, channels, total_frames);
+
+	const auto deadline = std::chrono::steady_clock::now() +
+		std::chrono::seconds(3);
+	const auto check_progress = [this, deadline]() {
+		{
+			const std::lock_guard lock{mutex};
+			if (interrupted)
+				throw AudioOutputInterrupted{};
+		}
+		if (std::chrono::steady_clock::now() >= deadline)
+			throw std::runtime_error("PCM bridge timed out");
+	};
+	const auto check_alsa = [&check_progress](int result,
+						const char *operation) {
+		check_progress();
+		if (result < 0)
+			throw Alsa::MakeError(result, operation);
+	};
+
+	snd_pcm_t *bridge_pcm = nullptr;
+	int err = snd_pcm_open(&bridge_pcm, GetDevice(),
+			       SND_PCM_STREAM_PLAYBACK, mode | SND_PCM_NONBLOCK);
+	if (err < 0)
+		throw Alsa::MakeError(err, "PCM bridge: snd_pcm_open() failed");
+	AtScopeExit(&bridge_pcm) {
+		if (bridge_pcm != nullptr)
+			snd_pcm_close(bridge_pcm);
+	};
+	check_progress();
+
+	snd_pcm_hw_params_t *hw;
+	snd_pcm_hw_params_alloca(&hw);
+	check_alsa(snd_pcm_hw_params_any(bridge_pcm, hw),
+		   "PCM bridge: snd_pcm_hw_params_any() failed");
+	check_alsa(snd_pcm_hw_params_set_access(bridge_pcm, hw,
+					      SND_PCM_ACCESS_RW_INTERLEAVED),
+		   "PCM bridge: interleaved access unavailable");
+	check_alsa(snd_pcm_hw_params_set_format(bridge_pcm, hw, SND_PCM_FORMAT_S16),
+		   "PCM bridge: S16 format unavailable");
+	check_alsa(snd_pcm_hw_params_set_channels(bridge_pcm, hw, channels),
+		   "PCM bridge: exact channel count unavailable");
+	check_alsa(snd_pcm_hw_params_set_rate(bridge_pcm, hw, rate, 0),
+		   "PCM bridge: exact sample rate unavailable");
+
+	/* Match the ordinary output's buffer/period timing, while keeping
+	   this half-second stream's allocation and start threshold bounded. */
+	unsigned bridge_buffer_time = std::min(buffer_time, MPD_ALSA_BUFFER_TIME_US);
+	const unsigned max_period_time = std::max(1U, bridge_buffer_time / 4);
+	unsigned bridge_period_time = period_time > 0
+		? std::min(period_time, max_period_time) : max_period_time;
+	check_alsa(snd_pcm_hw_params_set_buffer_time_near(bridge_pcm, hw,
+							&bridge_buffer_time, nullptr),
+		   "PCM bridge: buffer time unavailable");
+	check_alsa(snd_pcm_hw_params_set_period_time_near(bridge_pcm, hw,
+							&bridge_period_time, nullptr),
+		   "PCM bridge: period time unavailable");
+	check_alsa(snd_pcm_hw_params(bridge_pcm, hw),
+		   "PCM bridge: snd_pcm_hw_params() failed");
+
+	snd_pcm_uframes_t bridge_buffer_frames, bridge_period_frames;
+	check_alsa(snd_pcm_hw_params_get_buffer_size(hw, &bridge_buffer_frames),
+		   "PCM bridge: buffer size unavailable");
+	check_alsa(snd_pcm_hw_params_get_period_size(hw, &bridge_period_frames, nullptr),
+		   "PCM bridge: period size unavailable");
+	if (bridge_period_frames == 0 || bridge_buffer_frames <= bridge_period_frames)
+		throw std::runtime_error("Invalid PCM bridge buffer size");
+
+	const auto start_threshold = std::min(bridge_buffer_frames - bridge_period_frames,
+					     total_frames);
+	AlsaSetupSw(bridge_pcm, start_threshold, bridge_period_frames);
+	check_alsa(snd_pcm_prepare(bridge_pcm),
+		   "PCM bridge: snd_pcm_prepare() failed");
+	FmtDebug(alsa_output_domain,
+		 "{} bridge: buffer={} period={} start_threshold={}",
+		 direction, bridge_buffer_frames, bridge_period_frames, start_threshold);
+
+	/* Limit the temporary zero buffer to 64 KiB, independent of driver
+	   period sizes.  At 88.2 kHz stereo the usual 11025-frame period fits. */
+	const snd_pcm_uframes_t chunk_frames =
+		std::min(bridge_period_frames, snd_pcm_uframes_t(32768 / channels));
+	AllocatedArray<int16_t> zeros{chunk_frames * channels};
+	std::fill(zeros.begin(), zeros.end(), int16_t{});
+
+	const auto wait_ready = [&](bool draining) {
+		check_progress();
+		const int result = snd_pcm_wait(bridge_pcm, 20);
+		check_progress();
+		if (result < 0 && result != -EINTR &&
+		    !(draining && snd_pcm_state(bridge_pcm) == SND_PCM_STATE_SETUP))
+			throw Alsa::MakeError(result, "PCM bridge: snd_pcm_wait() failed");
+		/* Even a persistently ready descriptor must not turn zero-progress
+		   write/drain retries into a busy loop. */
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	};
+
+	for (snd_pcm_uframes_t remaining = total_frames; remaining > 0;) {
+		check_progress();
+		const auto requested = std::min(remaining, chunk_frames);
+		const auto n = snd_pcm_writei(bridge_pcm, zeros.data(), requested);
+		if (n > 0) {
+			if (snd_pcm_uframes_t(n) > requested)
+				throw std::runtime_error("Invalid PCM bridge write count");
+			remaining -= snd_pcm_uframes_t(n);
+		} else if (n == 0 || n == -EAGAIN || n == -EINTR) {
+			wait_ready(false);
+		} else {
+			throw Alsa::MakeError(n, "PCM bridge: snd_pcm_writei() failed");
+		}
+	}
+
+	while (true) {
+		check_progress();
+		const auto state = snd_pcm_state(bridge_pcm);
+		if (state == SND_PCM_STATE_SETUP)
+			break;
+		if (state == SND_PCM_STATE_DRAINING) {
+			wait_ready(true);
+			continue;
+		}
+		if (state != SND_PCM_STATE_PREPARED && state != SND_PCM_STATE_RUNNING)
+			throw std::runtime_error("Unexpected PCM bridge state while draining");
+		err = snd_pcm_drain(bridge_pcm);
+		if (err == 0)
+			break;
+		if (err != -EAGAIN && err != -EINTR)
+			throw Alsa::MakeError(err, "PCM bridge: snd_pcm_drain() failed");
+		wait_ready(true);
+	}
+
+	check_alsa(snd_pcm_close(std::exchange(bridge_pcm, nullptr)),
+		   "PCM bridge: snd_pcm_close() failed");
+	FmtInfo(alsa_output_domain,
+		"{} bridge: drained and closed rate={} channels={} frames={}",
+		direction, rate, channels, total_frames);
+}
+
+void
+AlsaOutput::PreparePcmToDsdBridge(const AudioFormat &requested_format)
+{
+	const auto check_interrupted = [this]() {
+		const std::lock_guard lock{mutex};
+		if (interrupted)
+			throw AudioOutputInterrupted{};
+	};
+	check_interrupted();
+	FmtDebug(alsa_output_domain,
+		 "PCM to DSD bridge: probing native input_rate={} channels={}",
+		 requested_format.sample_rate, requested_format.channels);
+
+	snd_pcm_t *probe_pcm = nullptr;
+	int err = snd_pcm_open(&probe_pcm, GetDevice(),
+			       SND_PCM_STREAM_PLAYBACK, mode | SND_PCM_NONBLOCK);
+	if (err < 0)
+		throw Alsa::MakeError(err, "PCM to DSD bridge: failed to open format probe");
+	AtScopeExit(&probe_pcm) {
+		if (probe_pcm != nullptr)
+			snd_pcm_close(probe_pcm);
+	};
+	check_interrupted();
+
+	/* Use the same format negotiation as SetupHw, but do not apply
+	   hardware parameters: changing the clock and mode here would defeat
+	   the PCM bridge.  No DSD playback history is required. */
+	snd_pcm_hw_params_t *hw;
+	snd_pcm_hw_params_alloca(&hw);
+	AudioFormat probed_format = requested_format;
+	PcmExport::Params probe_params;
+	const unsigned word_rate = Alsa::ConfigureHwFormat(probe_pcm, hw,
+							probed_format, probe_params);
+	check_interrupted();
+	err = snd_pcm_close(std::exchange(probe_pcm, nullptr));
+	if (err < 0)
+		throw Alsa::MakeError(err, "PCM to DSD bridge: failed to close format probe");
+	check_interrupted();
+
+	/* A changed DSD rate/channel count requires conversion and may make
+	   FilteredAudioOutput retry as PCM.  Bridge only an exact native DSD
+	   format, never that fallback or DoP. */
+	if (probed_format.format != SampleFormat::DSD ||
+	    probe_params.dsd_mode == PcmExport::DsdMode::DOP ||
+	    probed_format != requested_format) {
+		LogDebug(alsa_output_domain,
+			 "PCM to DSD bridge: skipped; no exact native DSD format");
+		return;
+	}
+	if (word_rate == last_pcm_rate) {
+		LogDebug(alsa_output_domain,
+			 "PCM to DSD bridge: skipped; PCM already uses the native DSD word rate");
+		return;
+	}
+
+	FmtDebug(alsa_output_domain,
+		 "PCM to DSD bridge: native probe input_rate={} word_rate={} channels={}",
+		 probed_format.sample_rate, word_rate, probed_format.channels);
+	PlayPcmBridge("PCM to DSD", word_rate, probed_format.channels);
+}
+
+#endif
+
 void
 AlsaOutput::Open(AudioFormat &audio_format)
 {
 	paused = false;
 	silence_inserted.store(false, std::memory_order_relaxed);
+	{
+		const std::lock_guard lock{mutex};
+		interrupted = false;
+	}
 
 #ifdef ENABLE_DSD
 	bool dop;
@@ -703,6 +938,18 @@ AlsaOutput::Open(AudioFormat &audio_format)
 #endif
 		}
 	}
+
+#ifdef ENABLE_DSD
+	if (pcm_to_dsd_bridge && last_open_was_pcm && !dop &&
+	    audio_format.format == SampleFormat::DSD)
+		PreparePcmToDsdBridge(audio_format);
+
+	if (dsd_to_pcm_bridge && last_open_was_native_dsd &&
+	    audio_format.format != SampleFormat::DSD &&
+	    audio_format.sample_rate != last_native_dsd_rate)
+		PlayPcmBridge("DSD to PCM", last_native_dsd_rate, last_native_dsd_channels);
+
+#endif
 
 	int err = snd_pcm_open(&pcm, GetDevice(),
 			       SND_PCM_STREAM_PLAYBACK, mode);
@@ -751,7 +998,6 @@ AlsaOutput::Open(AudioFormat &audio_format)
 	out_frame_size = pcm_export->GetOutputFrameSize();
 
 	drain = false;
-	interrupted = false;
 
 	size_t period_size = period_frames * out_frame_size;
 	ring_buffer = RingBuffer{period_size * 4};
@@ -763,6 +1009,20 @@ AlsaOutput::Open(AudioFormat &audio_format)
 	must_prepare = false;
 	written = false;
 	error = {};
+
+#ifdef ENABLE_DSD
+	last_open_was_pcm = !use_dsd;
+	if (last_open_was_pcm)
+		last_pcm_rate = params.CalcOutputSampleRate(audio_format.sample_rate);
+
+	last_open_was_native_dsd = use_dsd && params.dsd_mode != PcmExport::DsdMode::DOP;
+	if (last_open_was_native_dsd) {
+		/* SetupHw has already updated audio_format for negotiated rate
+		   and channels; export packing gives the actual ALSA word rate. */
+		last_native_dsd_rate = params.CalcOutputSampleRate(audio_format.sample_rate);
+		last_native_dsd_channels = audio_format.channels;
+	}
+#endif
 }
 
 void
@@ -976,6 +1236,9 @@ AlsaOutput::Drain()
 	/* the stream is discontinuous now; discard the incomplete
 	   block which may still be inside the PcmExport instance,
 	   because it would otherwise be prepended to the next song */
+	pcm_export->Reset();
+
+	/* Discard any incomplete DSD export block after draining. */
 	pcm_export->Reset();
 
 	if (error)

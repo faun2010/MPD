@@ -1,0 +1,149 @@
+---
+# Release builds of the SACD-enabled MPD.
+#
+# Runs for tags like v0.25.1-sacd (or manually).  Produces:
+#   * mpd-sacd-linux-x86_64.tar.gz  - native Ubuntu 24.04 build with the
+#     unified installer (install.sh) and mpd.conf.example
+#   * mpd-sacd-arm64-bookworm.tar.gz - Raspberry Pi / Debian 12 aarch64
+#     bundle built by packaging/raspberrypi inside its Docker image
+# On a tag both archives and their SHA256SUMS are attached to the
+# GitHub release; on manual runs they are only uploaded as artifacts.
+name: release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*-sacd*'
+
+permissions:
+  contents: write # create the release and upload assets
+
+jobs:
+  linux-x86_64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++ meson ninja-build \
+            libfmt-dev libgtest-dev libpcre2-dev \
+            libsystemd-dev libdbus-1-dev libicu-dev \
+            libcurl4-gnutls-dev libavahi-client-dev \
+            libid3tag0-dev libflac-dev libvorbis-dev libopus-dev libogg-dev \
+            libsndfile1-dev libfaad-dev libmpcdec-dev libwavpack-dev \
+            libavcodec-dev libavformat-dev \
+            libsamplerate0-dev libsoxr-dev \
+            libbz2-dev libcdio-paranoia-dev libiso9660-dev libzzip-dev \
+            libexpat-dev libasound2-dev libpulse-dev libshout3-dev \
+            libmpdclient-dev libnfs-dev libupnp-dev libsqlite3-dev \
+            libchromaprint-dev libgcrypt20-dev
+
+      - name: Configure
+        run: |
+          meson setup build/release \
+            --buildtype=release -Db_ndebug=true \
+            -Ddocumentation=disabled \
+            -Dtest=true \
+            -Dsystemd=enabled \
+            -Dpcre=enabled \
+            -Ddsd=true \
+            -Dsacdiso=enabled \
+            -Ddvdaiso=enabled \
+            --wrap-mode nofallback
+
+      - name: Build
+        run: meson compile -C build/release --verbose
+
+      - name: Unit tests
+        run: meson test -C build/release --print-errorlogs
+
+      - name: Installer contract tests
+        run: sh test/test_install.sh
+
+      - name: Bundle
+        run: |
+          set -eu
+          name=mpd-sacd-linux-x86_64
+          version=$(build/release/mpd --version | head -1)
+          rm -rf "build/bundle/$name"
+          mkdir -p "build/bundle/$name/bin"
+          cp build/release/mpd "build/bundle/$name/bin/mpd"
+          cp install.sh NEWS COPYING "build/bundle/$name/"
+          cp packaging/raspberrypi/mpd.conf.example "build/bundle/$name/"
+          build/release/mpd --version > "build/bundle/$name/VERSION"
+          (cd "build/bundle/$name" && find . -type f ! -name SHA256SUMS -print | LC_ALL=C sort |
+            while IFS= read -r f; do sha256sum -- "${f#./}"; done > SHA256SUMS)
+          ./install.sh --check --binary "build/bundle/$name/bin/mpd" --prefix "$RUNNER_TEMP/prefix"
+          tar -C build/bundle -czf "build/bundle/$name.tar.gz" "$name"
+          (cd build/bundle && sha256sum "$name.tar.gz" > SHA256SUMS-linux-x86_64)
+          echo "$version"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mpd-sacd-linux-x86_64
+          path: |
+            build/bundle/mpd-sacd-linux-x86_64.tar.gz
+            build/bundle/SHA256SUMS-linux-x86_64
+
+  arm64-bookworm:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Build cross image
+        run: docker build -t mpd-sacd-rpi-cross:bookworm -f packaging/raspberrypi/Dockerfile .
+
+      - name: Cross build and test (QEMU)
+        run: |
+          docker run --rm --network none --user "$(id -u):$(id -g)" \
+            --mount "type=bind,src=$PWD,dst=/src" \
+            mpd-sacd-rpi-cross:bookworm sh packaging/raspberrypi/build.sh
+
+      - name: Verify decoders
+        run: |
+          docker run --rm --network none --user "$(id -u):$(id -g)" \
+            --mount "type=bind,src=$PWD,dst=/src" \
+            mpd-sacd-rpi-cross:bookworm python3 packaging/raspberrypi/verify.py
+
+      - name: Package
+        run: |
+          docker run --rm --network none --user "$(id -u):$(id -g)" \
+            --mount "type=bind,src=$PWD,dst=/src" \
+            mpd-sacd-rpi-cross:bookworm python3 packaging/raspberrypi/package.py
+          (cd build/releases && sha256sum -c SHA256SUMS-arm64)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mpd-sacd-arm64-bookworm
+          path: |
+            build/releases/*.tar.gz
+            build/releases/SHA256SUMS-arm64
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [linux-x86_64, arm64-bookworm]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          ls -l dist
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "MPD $GITHUB_REF_NAME" \
+            --notes "SACD/DVD-Audio ISO and native DSD build of MPD. See NEWS for changes; verify archives with the SHA256SUMS files." \
+            dist/*
