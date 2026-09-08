@@ -205,3 +205,10 @@ option('zeroconf', type: 'combo',
        choices: ['auto', 'avahi', 'bonjour', 'disabled'],
        value: 'auto',
        description: 'Zeroconf support')
+
+#
+# DVD-Audio & Super Audio CD ISO support 
+#
+
+option('dvdaiso', type: 'boolean', value: true, description: 'Support DVD-Audio ISO via libdvdaiso')
+option('sacdiso', type: 'boolean', value: true, description: 'Support Super Audio CD ISO via libsacdiso')
