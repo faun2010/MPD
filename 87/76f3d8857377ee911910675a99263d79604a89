@@ -1,0 +1,25 @@
+src/output/plugins/AlsaOutputPlugin.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 34,40-41,44,161-171,229,231,305-307,468-469,701-911,917-920,942-953,1012-1025,1241
+doc/plugins.rst
+  s_6497443600dfdc::t_0f8a92d3f052d0 946-964
+src/lib/alsa/HwSetup.hxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 22-32
+src/lib/alsa/HwSetup.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 161-163,211-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "8776f3d8857377ee911910675a99263d79604a89",
+  "prompts": {},
+  "sessions": {
+    "s_6497443600dfdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd4fb16-928f-4956-a164-187007d41762",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "panzm <panzm@fullhan.com>"
+    }
+  }
+}
