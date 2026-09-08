@@ -207,8 +207,8 @@ option('zeroconf', type: 'combo',
        description: 'Zeroconf support')
 
 #
-# DVD-Audio & Super Audio CD ISO support 
+# DVD-Audio & Super Audio CD ISO support
 #
 
-option('dvdaiso', type: 'boolean', value: true, description: 'Support DVD-Audio ISO via libdvdaiso')
-option('sacdiso', type: 'boolean', value: true, description: 'Support Super Audio CD ISO via libsacdiso')
+option('sacdiso', type: 'feature', description: 'Super Audio CD ISO decoder (needs libixml from libupnp)')
+option('dvdaiso', type: 'feature', description: 'DVD-Audio ISO decoder (needs libixml from libupnp)')

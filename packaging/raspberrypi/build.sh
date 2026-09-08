@@ -11,7 +11,7 @@ fi
 meson setup $setup_mode "$build_dir" --cross-file packaging/raspberrypi/aarch64.ini \
     --buildtype=release --wrap-mode=nofallback \
     -Dauto_features=disabled -Dtest=true -Db_ndebug=false \
-    -Dsacdiso=true -Ddvdaiso=false -Ddsd=true -Dalsa=enabled \
+    -Dsacdiso=enabled -Ddvdaiso=disabled -Ddsd=true -Dalsa=enabled \
     -Dflac=enabled -Dffmpeg=enabled -Dsoxr=enabled -Dicu=enabled \
     -Dpcre=enabled -Dzlib=enabled -Dsqlite=enabled -Dipv6=enabled \
     -Dupnp=disabled -Dzeroconf=disabled -Ddocumentation=disabled
