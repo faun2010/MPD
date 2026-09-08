@@ -1,0 +1,19 @@
+src/decoder/DecoderList.cxx
+  s_6497443600dfdc::t_ffd7de9ee37ee8 67-70,113-116,119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "d260de3b32ec9dd2dc195eef8ccff0c5836f03d9",
+  "prompts": {},
+  "sessions": {
+    "s_6497443600dfdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd4fb16-928f-4956-a164-187007d41762",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "faun2010 <faun2005@gmail.com>"
+    }
+  }
+}
