@@ -1,0 +1,58 @@
+test/test_install.sh
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-302
+README.md
+  s_6497443600dfdc::t_0f8a92d3f052d0 3-103
+install.sh
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-326
+packaging/raspberrypi/build.sh
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-19
+.gitignore
+  s_6497443600dfdc::t_0f8a92d3f052d0 2-3,6-7
+test/verify_format_switch.py
+  s_6497443600dfdc::t_f528e14596845d 1-194
+test/verify_sacd_decode.py
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-233
+run-local.sh
+  s_6497443600dfdc::t_1c4f7b3c62fab1 9-10,15,51
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-8,11-14,16-50,52-72
+packaging/raspberrypi/verify.py
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-135
+.dockerignore
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-25
+packaging/raspberrypi/README.md
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-61
+test/verify_sacd_playback.py
+  s_6497443600dfdc::t_1c4f7b3c62fab1 63-68,73-74,99
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-62,69-72,75-89,94-98,100-180
+  s_6497443600dfdc::t_bd161a06c27b51 90-93
+packaging/raspberrypi/mpd.conf.example
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-32
+packaging/raspberrypi/aarch64.ini
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-23
+mybuild.sh
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-17
+NEWS
+  s_6497443600dfdc::t_8d93d1ef7ef8fd 2-12
+packaging/raspberrypi/package.py
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-250
+packaging/raspberrypi/Dockerfile
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-16
+packaging/raspberrypi/README-运行说明.md
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "2cd67d2553fa19ac0bd7f99417dd9900568f63c9",
+  "prompts": {},
+  "sessions": {
+    "s_6497443600dfdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd4fb16-928f-4956-a164-187007d41762",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "panzm <panzm@fullhan.com>"
+    }
+  }
+}
