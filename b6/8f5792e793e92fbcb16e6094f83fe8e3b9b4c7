@@ -1,0 +1,20 @@
+.github/workflows/release.yml
+  s_6497443600dfdc::t_78bbc98a6cb6a9 87,123,135
+  s_6497443600dfdc::t_d7ae81a47e8ea0 1-86,88-122,124-134,136-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "b68f5792e793e92fbcb16e6094f83fe8e3b9b4c7",
+  "prompts": {},
+  "sessions": {
+    "s_6497443600dfdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd4fb16-928f-4956-a164-187007d41762",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "faun2010 <faun2005@gmail.com>"
+    }
+  }
+}
