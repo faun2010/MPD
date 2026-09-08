@@ -14,6 +14,7 @@ on:
     branches:
       - master
       - v0.24.x
+      - feat/sacd-update
   pull_request:
     paths-ignore:
       - 'AUTHORS'
@@ -27,6 +28,7 @@ on:
     branches:
       - master
       - v0.24.x
+      - feat/sacd-update
 
 permissions:
   contents: read # to fetch code (actions/checkout)
@@ -99,6 +101,8 @@ jobs:
             -Dtest=true \
             -Ddocumentation=disabled \
             -Dupnp=disabled \
+            -Dsacdiso=disabled \
+            -Ddvdaiso=disabled \
             -Dcurl=enabled \
             -Dffmpeg=enabled \
             -Did3tag=enabled \
