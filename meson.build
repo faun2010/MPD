@@ -1,7 +1,7 @@
 project(
   'mpd',
   ['c', 'cpp'],
-  version: '0.25',
+  version: '0.25.1-sacd',
   meson_version: '>= 1.2',
   default_options: [
     'c_std=c11',
@@ -319,12 +319,39 @@ enable_database = get_option('database')
 enable_inotify = get_option('inotify') and is_linux and enable_database
 conf.set('ENABLE_INOTIFY', enable_inotify)
 
+# Super Audio CD and DVD-Audio ISO decoders need libixml (from libupnp)
+# for the metabase XML; each is auto-enabled when it is available.
+ixml_dep = c_compiler.find_library('ixml',
+  has_headers: ['upnp/ixml.h'],
+  required: get_option('sacdiso').enabled() or get_option('dvdaiso').enabled())
+sacdiso_feature = get_option('sacdiso').require(ixml_dep.found(),
+  error_message: 'libixml (libupnp) is required for the sacdiso decoder')
+dvdaiso_feature = get_option('dvdaiso').require(ixml_dep.found(),
+  error_message: 'libixml (libupnp) is required for the dvdaiso decoder')
+enable_sacdiso = sacdiso_feature.allowed()
+conf.set('ENABLE_SACDISO', enable_sacdiso)
+enable_dvdaiso = dvdaiso_feature.allowed()
+conf.set('ENABLE_DVDAISO', enable_dvdaiso)
+
 inc = include_directories(
   'src',
 
   # for the generated config.h
   '.',
 )
+
+if enable_sacdiso or enable_dvdaiso
+  inc = include_directories(
+    'src',
+	'.',
+	'src/lib/sacdiso',
+	'src/lib/sacdiso/libdstdec',
+	'src/lib/sacdiso/libdstdec/binding',
+	'src/lib/sacdiso/libdstdec/decoder',
+	'src/lib/dvdaiso',
+	'src/lib/dvdaiso/udf',
+  )
+endif
 
 subdir('src/lib/fmt')
 
@@ -531,6 +558,15 @@ subdir('src/filter')
 subdir('src/mixer')
 subdir('src/output')
 subdir('src/lib/xiph')
+
+if enable_sacdiso
+  subdir('src/lib/sacdiso')
+endif
+
+if enable_dvdaiso
+  subdir('src/lib/dvdaiso')
+endif
+
 subdir('src/decoder')
 subdir('src/encoder')
 subdir('src/song')

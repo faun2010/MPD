@@ -1,3 +1,7 @@
 /output/
+/build/*
+!/build/pkg-config.sh
 
 __pycache__/
+
+/.vscode/

@@ -15,6 +15,9 @@
 #include "plugins/PcmDecoderPlugin.hxx"
 #include "plugins/DsdiffDecoderPlugin.hxx"
 #include "plugins/DsfDecoderPlugin.hxx"
+#include "plugins/SacdIsoDecoderPlugin.hxx"
+#include "plugins/DvdaIsoDecoderPlugin.hxx"
+#include "plugins/DffDecoderPlugin.hxx"
 #include "plugins/FlacDecoderPlugin.h"
 #include "plugins/OpusDecoderPlugin.h"
 #include "plugins/VorbisDecoderPlugin.h"
@@ -61,7 +64,10 @@ constinit const struct DecoderPlugin *const decoder_plugins[] = {
 	&opus_decoder_plugin,
 #endif
 #ifdef ENABLE_DSD
+#ifndef ENABLE_SACDISO
+	/* with sacdiso, the dff plugin below replaces this one */
 	&dsdiff_decoder_plugin,
+#endif
 	&dsf_decoder_plugin,
 #endif
 #ifdef ENABLE_FAAD
@@ -102,6 +108,15 @@ constinit const struct DecoderPlugin *const decoder_plugins[] = {
 #endif
 #ifdef ENABLE_VGMSTREAM
 	&vgmstream_decoder_plugin,
+#endif
+#ifdef ENABLE_SACDISO
+	&sacdiso_decoder_plugin,
+#ifdef ENABLE_DSD
+	&dff_decoder_plugin,
+#endif
+#endif
+#ifdef ENABLE_DVDAISO
+	&dvdaiso_decoder_plugin,
 #endif
 #ifdef ENABLE_FFMPEG
 	&ffmpeg_decoder_plugin,

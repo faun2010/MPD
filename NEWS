@@ -1,3 +1,18 @@
+ver 0.25.1-sacd (2026/09/08)
+SACD build on top of upstream MPD 0.25 (git a66648876); options sacdiso and
+dvdaiso are meson features, enabled automatically when libixml is available.
+* decoder
+  - sacdiso: new plugin for Super Audio CD ISO images (DSD/DST, stereo and
+    multichannel areas, embedded metadata) based on Maxim Anisiutkin's MPD SACD
+  - dvdaiso: new plugin for DVD-Audio ISO images (PCM and MLP)
+  - dff: native DSDIFF plugin from the SACD tree, used when sacdiso is enabled
+  - dsdiff: keep the full DSD tail by using integer sample boundaries
+  - container scan: query every enabled plugin which supports the suffix
+* output
+  - alsa: new options "dsd_to_pcm_bridge" and "pcm_to_dsd_bridge" which play
+    a short PCM silence at the right word clock when switching between native
+    DSD and PCM, for DACs that cannot change mode and clock at once
+
 ver 0.25 (not yet released)
 * protocol
   - implement "window" parameter for command "list"
