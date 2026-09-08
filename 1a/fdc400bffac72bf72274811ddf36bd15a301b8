@@ -1,0 +1,45 @@
+src/decoder/plugins/DffDecoderPlugin.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-38,40-363
+  s_6497443600dfdc::t_188fd497f86320 39
+src/command/FileCommands.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 289-325,334-336,415
+src/TagAny.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 15,44-46
+src/decoder/plugins/DvdaIsoDecoderPlugin.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-39,41-360
+  s_6497443600dfdc::t_188fd497f86320 40
+src/decoder/plugins/DffDecoderPlugin.hxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-25
+src/db/update/Container.cxx
+  s_6497443600dfdc::t_8d93d1ef7ef8fd 17-18
+  s_6497443600dfdc::t_0f8a92d3f052d0 24-29,51-57,59-61,63-64,66-68,70-74,76-79,81-83
+src/decoder/plugins/DvdaIsoDecoderPlugin.hxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-25
+src/decoder/plugins/SacdIsoDecoderPlugin.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-39,41-416
+  s_6497443600dfdc::t_188fd497f86320 40
+src/decoder/Thread.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 489-492,495-496
+src/decoder/plugins/meson.build
+  s_6497443600dfdc::t_0f8a92d3f052d0 14-37
+src/decoder/plugins/SacdIsoDecoderPlugin.hxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 1-25
+src/decoder/DecoderList.cxx
+  s_6497443600dfdc::t_0f8a92d3f052d0 18-20,108-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "1afdc400bffac72bf72274811ddf36bd15a301b8",
+  "prompts": {},
+  "sessions": {
+    "s_6497443600dfdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cd4fb16-928f-4956-a164-187007d41762",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "panzm <panzm@fullhan.com>"
+    }
+  }
+}
