@@ -18,6 +18,7 @@ on:
     branches:
       - master
       - v0.24.x
+      - feat/sacd-update
   pull_request:
     paths-ignore:
       - 'AUTHORS'
@@ -35,6 +36,7 @@ on:
     branches:
       - master
       - v0.24.x
+      - feat/sacd-update
 
 permissions:
   contents: read #  to fetch code (actions/checkout)
@@ -118,6 +120,8 @@ jobs:
             -Dtest=true \
             -Dsystemd=enabled \
             -Dpcre=enabled \
+            -Dsacdiso=enabled \
+            -Ddvdaiso=enabled \
             --wrap-mode nofallback \
             ${{ matrix.meson_options }} \
             output/full
@@ -139,6 +143,8 @@ jobs:
             -Dsignalfd=false \
             -Dtcp=false \
             -Ddsd=false \
+            -Dsacdiso=disabled \
+            -Ddvdaiso=disabled \
             -Ddatabase=false \
             -Dneighbor=false \
             -Dnlohmann_json=enabled \
@@ -219,6 +225,8 @@ jobs:
             -Dnlohmann_json=enabled \
             -Dtest=true \
             -Dpcre=enabled \
+            -Dsacdiso=disabled \
+            -Ddvdaiso=disabled \
             --wrap-mode nofallback \
             ${{ matrix.meson_options }} \
             output/full
@@ -240,6 +248,8 @@ jobs:
             -Dsignalfd=false \
             -Dtcp=false \
             -Ddsd=false \
+            -Dsacdiso=disabled \
+            -Ddvdaiso=disabled \
             -Ddatabase=false \
             -Dneighbor=false \
             -Dcue=false \
@@ -323,6 +333,8 @@ jobs:
             -Dpsgplay=disabled \
             -Dudisks=disabled \
             -Dupnp=disabled \
+            -Dsacdiso=disabled \
+            -Ddvdaiso=disabled \
             -Dwavpack=disabled \
             -Dzzip=disabled \
             -Dtest=true \
