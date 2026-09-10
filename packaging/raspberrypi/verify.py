@@ -141,6 +141,7 @@ int main(int argc, char **argv) {
         "unit_tests": [{"name": item["name"], "result": item["result"]} for item in tests],
         "decode_checks": rows,
         "sacd_iso_sample_tested": bool(args.iso_uri),
+        "archive_script_tests": "not run: they bypass meson's QEMU exe_wrapper",
         "ape_decoder_and_demuxer_available": True,
         "ape_sample_decode_tested": False,
         "full_mpd_startup": "not tested under QEMU user (MPD startup thread guard)",

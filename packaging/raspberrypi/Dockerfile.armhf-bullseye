@@ -5,6 +5,15 @@
 # Bullseye armhf sysroot, with libstdc++ pulled in statically.  The result
 # depends only on glibc 2.31 and the shared libraries Bullseye already ships.
 FROM mpd-sacd-rpi-cross:armhf
-COPY bullseye-sysroot.sh glibc231-compat.c /opt/bullseye-sysroot/
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends cmake \
+ && rm -rf /var/lib/apt/lists/*
+COPY bullseye-sysroot.sh glibc231-compat.c ffmpeg-build.sh chromaprint-build.sh \
+     /opt/bullseye-sysroot/
 RUN sh /opt/bullseye-sysroot/bullseye-sysroot.sh
+# Bullseye's FFmpeg 4.3 is too old for the dvdaiso decoder and drags in ~97 MB
+# of video libraries; build a current one with no external dependencies.
+RUN JOBS=$(nproc) sh /opt/bullseye-sysroot/ffmpeg-build.sh
+# Debian's Chromaprint uses FFmpeg's RDFT, removed in FFmpeg 7; rebuild on kissfft.
+RUN JOBS=$(nproc) sh /opt/bullseye-sysroot/chromaprint-build.sh
 WORKDIR /src

@@ -6,19 +6,22 @@ set -eu
 SYSROOT=${SYSROOT:-/sysroot/bullseye-armhf}
 APT=/tmp/aptroot
 KEYRING=/usr/share/keyrings/debian-archive-keyring.gpg
-PACKAGES="libc6 libc6-dev linux-libc-dev libgcc-s1
- libasound2 libasound2-dev
- libflac8 libflac-dev libogg0 libogg-dev
- libavcodec58 libavcodec-dev libavformat58 libavformat-dev
- libavutil56 libavutil-dev libswresample3 libswresample-dev
- libswscale5 libswscale-dev
- libupnp13 libupnp-dev
- libsoxr0 libsoxr-dev
- libpcre2-8-0 libpcre2-dev
- zlib1g zlib1g-dev
- libicu67 libicu-dev
- libsqlite3-0 libsqlite3-dev
- libgtest-dev"
+# Mirrors the dependency list of the x86_64 release build in
+# .github/workflows/release.yml, so the Pi gets the same feature set from the
+# same source.  apt resolves the runtime packages and the rest of the closure.
+PACKAGES="libc6-dev linux-libc-dev
+ libgtest-dev libpcre2-dev libfmt-dev
+ libsystemd-dev libdbus-1-dev libicu-dev
+ libcurl4-gnutls-dev libavahi-client-dev
+ libid3tag0-dev libflac-dev libvorbis-dev libopus-dev libogg-dev
+ libsndfile1-dev libfaad-dev libmpcdec-dev libwavpack-dev
+ libavcodec-dev libavformat-dev libavutil-dev libswresample-dev
+ libsamplerate0-dev libsoxr-dev
+ libbz2-dev libcdio-paranoia-dev libiso9660-dev libzzip-dev
+ libexpat1-dev libasound2-dev libpulse-dev libshout3-dev
+ libmpdclient-dev libnfs-dev libupnp-dev libsqlite3-dev
+ libchromaprint-dev libgcrypt20-dev libfftw3-dev
+ zlib1g-dev"
 
 rm -rf "$APT"; mkdir -p "$APT/etc/apt/apt.conf.d" "$APT/etc/apt/preferences.d" \
     "$APT/etc/apt/sources.list.d" "$APT/var/lib/apt/lists/partial" \
