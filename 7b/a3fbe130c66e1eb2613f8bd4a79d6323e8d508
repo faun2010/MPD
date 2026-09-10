@@ -1,0 +1,26 @@
+packaging/raspberrypi/chromaprint-build.sh
+  s_16335eec84f1b3::t_dfb49ae26fcf37 17
+packaging/raspberrypi/armhf-bullseye.ini
+  s_16335eec84f1b3::t_dfb49ae26fcf37 26-28,34-35,45,47
+packaging/raspberrypi/ffmpeg-build.sh
+  s_16335eec84f1b3::t_dfb49ae26fcf37 34-35
+  s_16335eec84f1b3::t_1a0c9948f13535 17-19
+packaging/raspberrypi/bullseye-sysroot.sh
+  s_16335eec84f1b3::t_dfb49ae26fcf37 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "7ba3fbe130c66e1eb2613f8bd4a79d6323e8d508",
+  "prompts": {},
+  "sessions": {
+    "s_16335eec84f1b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c364055-043b-4e1f-b854-1e7d3914a437",
+        "model": "claude-opus-5"
+      },
+      "human_author": "faun2010 <faun2005@gmail.com>"
+    }
+  }
+}
