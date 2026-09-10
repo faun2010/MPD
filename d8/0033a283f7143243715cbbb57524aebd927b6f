@@ -1,0 +1,21 @@
+packaging/raspberrypi/chromaprint-build.sh
+  s_16335eec84f1b3::t_daa5a072e72487 54-64
+packaging/raspberrypi/ffmpeg-build.sh
+  s_16335eec84f1b3::t_daa5a072e72487 54-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "d80033a283f7143243715cbbb57524aebd927b6f",
+  "prompts": {},
+  "sessions": {
+    "s_16335eec84f1b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c364055-043b-4e1f-b854-1e7d3914a437",
+        "model": "claude-opus-5"
+      },
+      "human_author": "faun2010 <faun2005@gmail.com>"
+    }
+  }
+}
