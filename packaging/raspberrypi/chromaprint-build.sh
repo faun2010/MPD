@@ -51,6 +51,17 @@ cmake --build "$work/build" -j "${JOBS:-6}"
 rm -f "$SYSROOT"/usr/lib/"$TRIPLET"/libchromaprint.so*
 DESTDIR="$SYSROOT" cmake --install "$work/build"
 
+# The packager requires a copyright notice for every bundled runtime package.
+mkdir -p "$SYSROOT/usr/share/doc/chromaprint"
+{
+    echo "Chromaprint $VERSION, built from the Debian source tarball with the"
+    echo "FFTW3 backend.  Chromaprint itself is LGPL v2.1 or later; FFTW3 is"
+    echo "GPL v2 or later, so this build is effectively GPL v2 or later."
+    echo "FFTW3's own notice is under libfftw3-single3."
+    echo
+    cat "$src/LICENSE.md"
+} > "$SYSROOT/usr/share/doc/chromaprint/copyright"
+
 printf 'chromaprint\t%s\tchromaprint\t%s\tsource\n' "$VERSION" "$VERSION" \
     >> "$SYSROOT/PACKAGES.tsv"
 for f in "$SYSROOT"/usr/lib/"$TRIPLET"/libchromaprint.so.*; do

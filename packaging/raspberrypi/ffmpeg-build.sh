@@ -51,6 +51,18 @@ rm -rf "$SYSROOT"/usr/include/libav*/ "$SYSROOT"/usr/include/libsw*/ \
        "$SYSROOT/usr/include/$TRIPLET"/libpostproc/
 make install DESTDIR="$SYSROOT"
 
+# The packager requires a copyright notice for every bundled runtime package.
+mkdir -p "$SYSROOT/usr/share/doc/ffmpeg"
+{
+    echo "FFmpeg $VERSION, built from https://ffmpeg.org/releases/ with"
+    echo "--disable-autodetect, so no external library is linked and no GPL"
+    echo "component is enabled.  The result is covered by the LGPL v2.1 or later."
+    echo
+    cat LICENSE.md
+    echo
+    cat COPYING.LGPLv2.1
+} > "$SYSROOT/usr/share/doc/ffmpeg/copyright"
+
 printf 'ffmpeg\t%s\tffmpeg\t%s\tsource\n' "$VERSION" "$VERSION" \
     >> "$SYSROOT/PACKAGES.tsv"
 for f in "$SYSROOT"/usr/lib/"$TRIPLET"/lib[as][vw]*.so.*; do
