@@ -1,0 +1,38 @@
+packaging/raspberrypi/build.sh
+  s_16335eec84f1b3::t_56644942b2c27f 3,6-11,17
+packaging/raspberrypi/verify.py
+  s_16335eec84f1b3::t_e6cc3426b4f60f 2,11-16,18-28,39-40,49-50,53,93,120,122,137
+  s_16335eec84f1b3::t_5e2e613c18b857 17
+packaging/raspberrypi/armhf.ini
+  s_16335eec84f1b3::t_afbfca754108e1 1-27
+packaging/raspberrypi/README-运行说明-armhf.md
+  s_16335eec84f1b3::t_6e550c05891c6f 1-8,10-62
+  s_16335eec84f1b3::t_2622afbbc0cdc3 9
+packaging/raspberrypi/package.py
+  s_16335eec84f1b3::t_704815c69fa190 39,50,202
+  s_16335eec84f1b3::t_d85acc0065a0a2 2,27-38,40-49,51-52,67-69,72-74,77,87,112-113,118-121,124,155,161-162,166,170-171,174,178,185,207-208,222,235,237,252,254,268,275-276
+packaging/raspberrypi/README.md
+  s_16335eec84f1b3::t_0218f36adc2a48 62-98
+packaging/raspberrypi/Dockerfile.armhf
+  s_16335eec84f1b3::t_b94a3bd37fb128 3-4,9,13
+  s_16335eec84f1b3::t_31ee58984c9ed5 18
+  s_16335eec84f1b3::t_53a4a95aa89ae8 5-8,19-20
+  s_16335eec84f1b3::t_7b9a0375bfceba 16
+  s_16335eec84f1b3::t_afbfca754108e1 1-2,10-12,14-15,17,21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "1532604ca3e160480a22137b2fe18a3d2925eda8",
+  "prompts": {},
+  "sessions": {
+    "s_16335eec84f1b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c364055-043b-4e1f-b854-1e7d3914a437",
+        "model": "claude-opus-5"
+      },
+      "human_author": "faun2010 <faun2005@gmail.com>"
+    }
+  }
+}
