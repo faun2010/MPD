@@ -134,11 +134,13 @@ def main():
     subprocess.run(["git", "diff", "--exit-code", "HEAD", "--", *SOURCE_PATHS], cwd=ROOT, check=True)
     for required in ("install.sh", "packaging/raspberrypi/package.py"):
         subprocess.run(["git", "cat-file", "-e", revision + ":" + required], cwd=ROOT, check=True)
-    compiled_version = re.search(r'GIT_VERSION\[\] = "([0-9a-f]+)"',
+    # meson's vcs_tag records `git describe --dirty=+`, so this is a describe
+    # string rather than a bare hash; a trailing '+' marks a dirty work tree.
+    compiled_version = re.search(r'GIT_VERSION\[\] = "([^"]*)"',
                                  (build / "GitVersion.cxx").read_text())
-    if not compiled_version:
+    if not compiled_version or not compiled_version[1] or compiled_version[1].endswith("+"):
         raise RuntimeError("Build must identify an unmodified Git source revision")
-    compiled_revision = output(["git", "rev-parse", compiled_version[1]])
+    compiled_revision = output(["git", "rev-parse", compiled_version[1] + "^{commit}"])
     # Packaging/docs may be committed after compilation; executable source may not change.
     subprocess.run(["git", "diff", "--exit-code", compiled_revision, revision, "--",
                     "src", "meson.build", "meson_options.txt", "subprojects", "python",
