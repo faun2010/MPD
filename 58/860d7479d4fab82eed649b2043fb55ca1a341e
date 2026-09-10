@@ -1,0 +1,19 @@
+packaging/raspberrypi/package.py
+  s_16335eec84f1b3::t_5be1d04eba44c0 137-139,141,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "58860d7479d4fab82eed649b2043fb55ca1a341e",
+  "prompts": {},
+  "sessions": {
+    "s_16335eec84f1b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c364055-043b-4e1f-b854-1e7d3914a437",
+        "model": "claude-opus-5"
+      },
+      "human_author": "faun2010 <faun2005@gmail.com>"
+    }
+  }
+}
