@@ -1,0 +1,38 @@
+packaging/raspberrypi/bullseye-sysroot.sh
+  s_16335eec84f1b3::t_f97dd52cd21722 9-22,24
+  s_16335eec84f1b3::t_0bdb82ab053e11 23
+packaging/raspberrypi/build.sh
+  s_16335eec84f1b3::t_611ed798ad6917 2,8,16-24,29-33,37,44
+  s_16335eec84f1b3::t_3338f8e0a6c4fd 9-14,25-28,34-35
+  s_16335eec84f1b3::t_dcc19c467d7506 46-52
+packaging/raspberrypi/Dockerfile.armhf-bullseye
+  s_16335eec84f1b3::t_cbdc0333ea48fc 14-16
+  s_16335eec84f1b3::t_7e0c395b40fa07 8-12,17-18
+packaging/raspberrypi/chromaprint-build.sh
+  s_16335eec84f1b3::t_7e0c395b40fa07 1-5,9-17,22-35,37-45,48-51,53-59
+  s_16335eec84f1b3::t_90e5fb05719d11 18-21,36
+  s_16335eec84f1b3::t_37a45fc2b31545 46,52
+  s_16335eec84f1b3::t_0bdb82ab053e11 6-8,47
+  s_16335eec84f1b3::t_b310336f0b3203 60
+packaging/raspberrypi/ffmpeg-build.sh
+  s_16335eec84f1b3::t_cb16849874ecae 45-51
+  s_16335eec84f1b3::t_ec2bd0acd41cd5 1-44,52-60
+packaging/raspberrypi/verify.py
+  s_16335eec84f1b3::t_dcc19c467d7506 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "112eb532f38b156a87b408cbb1e4263588b4f445",
+  "prompts": {},
+  "sessions": {
+    "s_16335eec84f1b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c364055-043b-4e1f-b854-1e7d3914a437",
+        "model": "claude-opus-5"
+      },
+      "human_author": "faun2010 <faun2005@gmail.com>"
+    }
+  }
+}
