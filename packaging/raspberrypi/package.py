@@ -92,6 +92,22 @@ def check_elf(path, spec):
         raise RuntimeError(f"Not a little-endian {spec['machine']} ELF: {path.name}")
 
 
+def runpath_dirs(path, triplet, sysroot):
+    """Directories a library names itself, e.g. libpulse's private pulseaudio/."""
+    dump = subprocess.check_output([triplet + "-readelf", "-d", str(path)], text=True)
+    dirs = []
+    for value in re.findall(r"Library (?:runpath|rpath): \[(.+?)\]", dump):
+        for entry in value.split(":"):
+            if not entry:
+                continue
+            if "$ORIGIN" in entry or "${ORIGIN}" in entry:
+                entry = entry.replace("${ORIGIN}", "$ORIGIN").replace("$ORIGIN", str(path.parent))
+                dirs.append(Path(entry))
+            elif entry.startswith("/"):
+                dirs.append(Path(str(sysroot or "")) / entry.lstrip("/"))
+    return dirs
+
+
 def read_sysroot_index(sysroot):
     index = {}
     for line in (sysroot / "FILES.tsv").read_text().splitlines():
@@ -209,7 +225,9 @@ def main():
                     raise RuntimeError(f"Non-relocatable ELF dependency: {dependency}")
                 if dependency in system_libs or dependency in copied:
                     continue
-                source = next((directory / dependency for directory in search
+                # A library may point at a private directory of its own.
+                lookup = runpath_dirs(file, triplet, sysroot) + search
+                source = next((directory / dependency for directory in lookup
                                if (directory / dependency).is_file()), None)
                 if source is None:
                     raise RuntimeError(f"Unresolved dependency: {dependency}")
