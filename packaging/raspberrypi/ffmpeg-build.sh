@@ -14,7 +14,9 @@ set -eu
 SYSROOT=${SYSROOT:-/sysroot/bullseye-armhf}
 VERSION=${FFMPEG_VERSION:-7.1.5}
 TRIPLET=arm-linux-gnueabihf
-FLAGS='-marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard'
+# --cpu=cortex-a7 makes FFmpeg pick its own -mcpu, which conflicts with an
+# explicit -march; only the ABI flag it does not set is passed here.
+FLAGS='-mfloat-abi=hard'
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -29,7 +31,8 @@ PKG_CONFIG_SYSROOT_DIR="$SYSROOT" \
     --libdir="/usr/lib/$TRIPLET" \
     --shlibdir="/usr/lib/$TRIPLET" \
     --enable-cross-compile --cross-prefix="$TRIPLET-" \
-    --cc="$TRIPLET-gcc-12" --arch=arm --cpu=armv7-a --target-os=linux \
+    --cc="$TRIPLET-gcc-12" --arch=arm --cpu=cortex-a7 --target-os=linux \
+    --enable-neon \
     --sysroot="$SYSROOT" \
     --extra-cflags="$FLAGS" --extra-ldflags="$FLAGS" \
     --enable-shared --disable-static \

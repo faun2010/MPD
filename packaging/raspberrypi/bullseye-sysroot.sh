@@ -118,7 +118,7 @@ rm -rf /usr/arm-linux-gnueabihf/include/* /usr/arm-linux-gnueabihf/lib/*
 # Two libstdc++ symbols postdate glibc 2.31; see glibc231-compat.c.
 mkdir -p /opt/glibc231-compat
 clang-16 --target=arm-linux-gnueabihf --sysroot="$SYSROOT" \
-    -marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard -O2 -c \
+    -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -O2 -c \
     "$(dirname "$0")/glibc231-compat.c" -o /opt/glibc231-compat/compat.o
 
 echo "=== sysroot ready: $SYSROOT ==="

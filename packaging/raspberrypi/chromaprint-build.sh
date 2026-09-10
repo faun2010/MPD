@@ -14,7 +14,7 @@ set -eu
 SYSROOT=${SYSROOT:-/sysroot/bullseye-armhf}
 VERSION=${CHROMAPRINT_VERSION:-1.5.1}
 TRIPLET=arm-linux-gnueabihf
-FLAGS='-marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=hard'
+FLAGS='-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard'
 # bullseye-sysroot.sh moved GCC 12's C++ headers out of the toolchain's own
 # include directory, so point at them the same way the meson cross file does.
 CXX_HEADERS='/opt/gcc12-cxx/12'
