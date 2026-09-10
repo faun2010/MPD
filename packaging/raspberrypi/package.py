@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create an ARM64 runtime bundle, matching source archive and relative checksums.
+"""Create an ARM runtime bundle, matching source archive and relative checksums.
 
 Run in the cross-build image after committing the release sources and passing
 verify.py. Host glibc and the ALSA configuration data remain system dependencies.
@@ -24,7 +24,32 @@ SOURCE_PATHS = ["AUTHORS", "COPYING", "LICENSES", "NEWS", "README.md", "install.
                 "src", "test", "subprojects", "python", "doc", "systemd", "android",
                 "win32", "packaging/raspberrypi"]
 SYSTEM_LIBS = {"libc.so.6", "libm.so.6", "libpthread.so.0", "libdl.so.2", "librt.so.1",
-               "libresolv.so.2", "libutil.so.1", "libanl.so.1", "ld-linux-aarch64.so.1"}
+               "libresolv.so.2", "libutil.so.1", "libanl.so.1"}
+# Everything that differs between the 64-bit and 32-bit Raspberry Pi targets.
+TARGETS = {
+    "arm64": {
+        "name": "mpd-sacd-arm64-bookworm", "build_dir": "build/rpi-arm64",
+        "triplet": "aarch64-linux-gnu", "deb_arch": "arm64",
+        "elf_machine": 183, "machine": "aarch64",
+        "loader": "/lib/ld-linux-aarch64.so.1",
+        "qemu": ["qemu-aarch64", "-cpu", "cortex-a53"],
+        "target": "aarch64-linux-gnu, ARMv8-A, little endian",
+        "source_archive": "mpd-sacd-arm64-source.tar.gz",
+        "checksums": "SHA256SUMS-arm64",
+        "readme": "packaging/raspberrypi/README-运行说明.md",
+    },
+    "armhf": {
+        "name": "mpd-sacd-armhf-bookworm", "build_dir": "build/rpi-armhf",
+        "triplet": "arm-linux-gnueabihf", "deb_arch": "armhf",
+        "elf_machine": 40, "machine": "armv7l",
+        "loader": "/lib/ld-linux-armhf.so.3",
+        "qemu": ["qemu-arm", "-cpu", "cortex-a7"],
+        "target": "arm-linux-gnueabihf, ARMv7-A hard-float, little endian",
+        "source_archive": "mpd-sacd-armhf-source.tar.gz",
+        "checksums": "SHA256SUMS-armhf",
+        "readme": "packaging/raspberrypi/README-运行说明-armhf.md",
+    },
+}
 
 
 def output(command):
@@ -39,15 +64,17 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def check_arm64(path):
+def check_elf(path, spec):
+    # 32-bit ARM ELFs use ELFCLASS32; AArch64 uses ELFCLASS64.
+    elf_class = b"\x01" if spec["elf_machine"] == 40 else b"\x02"
     with path.open("rb") as stream:
         header = stream.read(20)
-    if (header[:6] != b"\x7fELF\x02\x01" or len(header) != 20
-            or struct.unpack("<H", header[18:20])[0] != 183):
-        raise RuntimeError(f"Not a little-endian AArch64 ELF: {path.name}")
+    if (header[:5] != b"\x7fELF" + elf_class or header[5:6] != b"\x01" or len(header) != 20
+            or struct.unpack("<H", header[18:20])[0] != spec["elf_machine"]):
+        raise RuntimeError(f"Not a little-endian {spec['machine']} ELF: {path.name}")
 
 
-def owning_package(source):
+def owning_package(source, deb_arch):
     # Debian package records may use /lib or /usr/lib on a merged-/usr image.
     paths = [str(source), str(source.resolve())]
     paths.extend(path[4:] for path in list(paths) if path.startswith("/usr/lib/"))
@@ -57,7 +84,7 @@ def owning_package(source):
         if result.returncode == 0:
             for line in result.stdout.splitlines():
                 package, separator, _ = line.partition(": ")
-                if separator and package.endswith(":arm64"):
+                if separator and package.endswith(":" + deb_arch):
                     return package
     raise RuntimeError(f"Cannot identify Debian package for bundled {source.name}")
 
@@ -82,15 +109,19 @@ def archive_tree(directory, archive, timestamp):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--build-dir", type=Path, default=ROOT / "build/rpi-arm64")
+    parser.add_argument("--arch", choices=sorted(TARGETS), default="arm64")
+    parser.add_argument("--build-dir", type=Path)
     parser.add_argument("--output-dir", type=Path, default=ROOT / "build/releases")
     parser.add_argument("--validation", type=Path)
     parser.add_argument("--replace", action="store_true", help="Replace a prior bundle from this packager")
     args = parser.parse_args()
-    build = args.build_dir.resolve()
+    spec = TARGETS[args.arch]
+    triplet = spec["triplet"]
+    system_libs = SYSTEM_LIBS | {Path(spec["loader"]).name}
+    build = (args.build_dir or ROOT / spec["build_dir"]).resolve()
     destination = args.output_dir.resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    name = "mpd-sacd-arm64-bookworm"
+    name = spec["name"]
     target = destination / name
     if target.exists():
         marker = target / "BUILD.json"
@@ -121,37 +152,37 @@ def main():
     if not validation.get("unit_test_groups_passed") or not validation.get("decode_checks"):
         raise RuntimeError("Unit-test and decoder verification are required before packaging")
 
-    with tempfile.TemporaryDirectory(prefix=".mpd-arm64-package-", dir=destination) as temporary:
+    with tempfile.TemporaryDirectory(prefix=f".mpd-{args.arch}-package-", dir=destination) as temporary:
         stage = Path(temporary)
         bundle = stage / name
         for directory in ("bin", "lib", "licenses", "source"):
             (bundle / directory).mkdir(parents=True)
         shutil.copy2(build / "mpd", bundle / "bin/mpd")
-        check_arm64(bundle / "bin/mpd")
-        subprocess.run(["aarch64-linux-gnu-strip", str(bundle / "bin/mpd")], check=True)
+        check_elf(bundle / "bin/mpd", spec)
+        subprocess.run([triplet + "-strip", str(bundle / "bin/mpd")], check=True)
         pending = [bundle / "bin/mpd"]
         copied = set()
         runtime_packages = set()
-        search = [Path("/lib/aarch64-linux-gnu"), Path("/usr/lib/aarch64-linux-gnu")]
+        search = [Path("/lib") / triplet, Path("/usr/lib") / triplet]
         glibc_versions = set()
         while pending:
             file = pending.pop()
-            check_arm64(file)
-            symbols = output(["aarch64-linux-gnu-readelf", "--version-info", str(file)])
+            check_elf(file, spec)
+            symbols = output([triplet + "-readelf", "--version-info", str(file)])
             glibc_versions.update(tuple(map(int, v.split("."))) for v in
                                   re.findall(r"\bGLIBC_([0-9]+\.[0-9]+(?:\.[0-9]+)?)\b", symbols))
-            dynamic = output(["aarch64-linux-gnu-readelf", "-d", str(file)])
+            dynamic = output([triplet + "-readelf", "-d", str(file)])
             for dependency in re.findall(r"Shared library: \[(.+?)\]", dynamic):
                 if "/" in dependency:
                     raise RuntimeError(f"Non-relocatable ELF dependency: {dependency}")
-                if dependency in SYSTEM_LIBS or dependency in copied:
+                if dependency in system_libs or dependency in copied:
                     continue
                 source = next((directory / dependency for directory in search
                                if (directory / dependency).is_file()), None)
                 if source is None:
                     raise RuntimeError(f"Unresolved dependency: {dependency}")
                 copied.add(dependency)
-                runtime_packages.add(owning_package(source))
+                runtime_packages.add(owning_package(source, spec["deb_arch"]))
                 target_lib = bundle / "lib" / dependency
                 shutil.copy2(source.resolve(), target_lib)
                 pending.append(target_lib)
@@ -168,12 +199,13 @@ exec "$bundle_dir/bin/mpd" "$@"
         (bundle / "mpd").chmod(0o755)
         shutil.copy2(ROOT / "install.sh", bundle / "install.sh")
         (bundle / "install.sh").chmod(0o755)
-        shutil.copy2(ROOT / "packaging/raspberrypi/README-运行说明.md", bundle / "README.md")
+        shutil.copy2(ROOT / spec["readme"], bundle / "README.md")
         shutil.copy2(ROOT / "packaging/raspberrypi/mpd.conf.example", bundle / "mpd.conf.example")
         shutil.copy2(ROOT / "COPYING", bundle / "licenses/MPD-COPYING")
         shutil.copytree(ROOT / "LICENSES", bundle / "licenses/MPD")
         packages = output(["dpkg-query", "-W", "-f=${binary:Package}\t${Version}\t${source:Package}\t${source:Version}\t${Architecture}\n"])
-        arm_packages = [line for line in packages.splitlines() if line.endswith("\tarm64")]
+        arm_packages = [line for line in packages.splitlines()
+                        if line.endswith("\t" + spec["deb_arch"])]
         (bundle / "BUILD-PACKAGES.tsv").write_text(
             "binary_package\tversion\tsource_package\tsource_version\tarchitecture\n"
             + "\n".join(arm_packages) + "\n")
@@ -187,7 +219,7 @@ exec "$bundle_dir/bin/mpd" "$@"
         # Debian copyright notices refer to these standard license texts.
         shutil.copytree("/usr/share/common-licenses", bundle / "licenses/common-licenses", symlinks=False)
         (bundle / "source/DEPENDENCIES.md").write_text(
-            "The bundled libraries are unmodified Debian Bookworm arm64 binaries.\n"
+            f"The bundled libraries are unmodified Debian Bookworm {spec['deb_arch']} binaries.\n"
             "BUILD-PACKAGES.tsv records binary and source package names and exact versions.\n"
             "Corresponding Debian source packages (including Debian patches) are available from\n"
             "https://deb.debian.org/debian/pool/ and https://snapshot.debian.org/package/ .\n"
@@ -200,9 +232,9 @@ exec "$bundle_dir/bin/mpd" "$@"
             gz.write(archive.stdout)
 
         # Validate dynamic linking using only the relocated bundle's non-glibc libraries.
-        loader = subprocess.run(["qemu-aarch64", "-cpu", "cortex-a53", "-L", "/", "-E",
+        loader = subprocess.run([*spec["qemu"], "-L", "/", "-E",
                                  "LD_LIBRARY_PATH=" + str(bundle / "lib"),
-                                 "/lib/ld-linux-aarch64.so.1", "--list", str(bundle / "bin/mpd")],
+                                 spec["loader"], "--list", str(bundle / "bin/mpd")],
                                 check=True, capture_output=True, text=True, timeout=60)
         if "not found" in loader.stdout + loader.stderr:
             raise RuntimeError("Bundle dependency resolution failed")
@@ -217,9 +249,9 @@ exec "$bundle_dir/bin/mpd" "$@"
         validation["max_required_glibc"] = ".".join(map(str, required_glibc))
         (bundle / "VALIDATION.json").write_text(json.dumps(validation, indent=2) + "\n")
         manifest = {
-            "package": name, "machine": "aarch64", "elf_machine": 183,
+            "package": name, "machine": spec["machine"], "elf_machine": spec["elf_machine"],
             "version": json.loads((build / "meson-info/intro-projectinfo.json").read_text())["version"],
-            "target": "aarch64-linux-gnu, ARMv8-A, little endian", "minimum_glibc": "2.36",
+            "target": spec["target"], "minimum_glibc": "2.36",
             "compiler": output(["clang++-16", "--version"]).splitlines()[0],
             "source_commit": revision, "compiled_source_commit": compiled_revision,
             "source_archive_sha256": sha256(source_archive),
@@ -233,15 +265,15 @@ exec "$bundle_dir/bin/mpd" "$@"
         subprocess.run(["sha256sum", "--check", "--quiet", "SHA256SUMS"], cwd=bundle, check=True)
         release_archive = stage / (name + ".tar.gz")
         archive_tree(bundle, release_archive, timestamp)
-        source_release = stage / "mpd-sacd-arm64-source.tar.gz"
+        source_release = stage / spec["source_archive"]
         shutil.copy2(source_archive, source_release)
         if target.exists():
             shutil.rmtree(target)
         shutil.move(str(bundle), target)
         for file in (release_archive, source_release):
             os.replace(file, destination / file.name)
-        archives = [destination / (name + ".tar.gz"), destination / "mpd-sacd-arm64-source.tar.gz"]
-        (destination / "SHA256SUMS-arm64").write_text("".join(f"{sha256(p)}  {p.name}\n" for p in archives))
+        archives = [destination / (name + ".tar.gz"), destination / spec["source_archive"]]
+        (destination / spec["checksums"]).write_text("".join(f"{sha256(p)}  {p.name}\n" for p in archives))
     print(json.dumps(manifest, indent=2))
     print(f"Bundle: {target}")
 

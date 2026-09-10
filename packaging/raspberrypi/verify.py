@@ -1,11 +1,29 @@
 #!/usr/bin/env python3
-"""Exercise ARMv8-A decoder output and (optionally) a relocated runtime bundle."""
+"""Exercise ARM decoder output and (optionally) a relocated runtime bundle."""
 import argparse
 import hashlib
 import json
 from pathlib import Path
 import struct
 import subprocess
+
+
+# Everything that differs between the 64-bit and 32-bit Raspberry Pi targets.
+TARGETS = {
+    "arm64": {
+        "build_dir": "build/rpi-arm64", "triplet": "aarch64-linux-gnu",
+        "qemu": ["qemu-aarch64", "-cpu", "cortex-a53"],
+        "march": ["-march=armv8-a"], "loader": "/lib/ld-linux-aarch64.so.1",
+        "qemu_cpu": "cortex-a53 (ARMv8-A)", "label": "ARM64",
+    },
+    "armhf": {
+        "build_dir": "build/rpi-armhf", "triplet": "arm-linux-gnueabihf",
+        "qemu": ["qemu-arm", "-cpu", "cortex-a7"],
+        "march": ["-march=armv7-a", "-mfpu=vfpv3-d16", "-mfloat-abi=hard"],
+        "loader": "/lib/ld-linux-armhf.so.3",
+        "qemu_cpu": "cortex-a7 (ARMv7-A hard-float)", "label": "armhf",
+    },
+}
 
 
 def run(command, **kwargs):
@@ -18,7 +36,8 @@ def chunk(name, data):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--build-dir", type=Path, default=Path("build/rpi-arm64"))
+    parser.add_argument("--arch", choices=sorted(TARGETS), default="arm64")
+    parser.add_argument("--build-dir", type=Path)
     parser.add_argument("--report-dir", type=Path)
     parser.add_argument("--bundle-dir", type=Path)
     parser.add_argument("--iso-uri", help="Local ISO path followed by its virtual track filename")
@@ -27,10 +46,11 @@ def main():
     args = parser.parse_args()
     if bool(args.iso_uri) != bool(args.iso_reference):
         parser.error("--iso-uri and --iso-reference must be used together")
-    build = args.build_dir.resolve()
+    spec = TARGETS[args.arch]
+    build = (args.build_dir or Path(spec["build_dir"])).resolve()
     report_dir = (args.report_dir or build / "verification").resolve()
     report_dir.mkdir(parents=True, exist_ok=True)
-    qemu = ["qemu-aarch64", "-cpu", "cortex-a53", "-L", "/"]
+    qemu = [*spec["qemu"], "-L", "/"]
     config = report_dir / "decoder.conf"
     config.write_text('decoder {\n plugin "dsdiff"\n lsbitfirst "no"\n use_stdio "yes"\n}\n'
                       'decoder {\n plugin "sacdiso"\n lsbitfirst "no"\n use_stdio "yes"\n}\n')
@@ -70,7 +90,7 @@ int main(int argc, char **argv) {
     return ok ? 0 : 4;
 }
 ''')
-    run(["aarch64-linux-gnu-gcc", "-march=armv8-a", str(helper), "-o",
+    run([spec["triplet"] + "-gcc", *spec["march"], str(helper), "-o",
          str(report_dir / "codec_probe"), "-lFLAC", "-lavcodec", "-lavformat"])
     run(qemu + [str(report_dir / "codec_probe"), str(report_dir / "synthetic.flac")])
     cases = [("DFF", "dsdiff", str(report_dir / "synthetic.dff"), dsd, 0),
@@ -97,9 +117,9 @@ int main(int argc, char **argv) {
     testlog = build / "meson-logs/testlog.json"
     tests = [json.loads(line) for line in testlog.read_text().splitlines() if line]
     if not tests or any(item["result"] != "OK" for item in tests):
-        raise RuntimeError("ARM64 Meson tests have not all passed")
+        raise RuntimeError(f"{spec['label']} Meson tests have not all passed")
     report = {
-        "qemu_cpu": "cortex-a53 (ARMv8-A)",
+        "qemu_cpu": spec["qemu_cpu"],
         "unit_test_groups_passed": len(tests),
         "unit_tests": [{"name": item["name"], "result": item["result"]} for item in tests],
         "decode_checks": rows,
@@ -114,7 +134,7 @@ int main(int argc, char **argv) {
         # This can be pointed at an extracted bundle to prove relocation.
         bundle = args.bundle_dir.resolve()
         result = run(qemu + ["-E", "LD_LIBRARY_PATH=" + str(bundle / "lib"),
-                            "/lib/ld-linux-aarch64.so.1", "--list", str(bundle / "bin/mpd")],
+                            spec["loader"], "--list", str(bundle / "bin/mpd")],
                      capture_output=True, text=True)
         if "not found" in result.stdout + result.stderr:
             raise RuntimeError("Bundled dependency not found")

@@ -59,3 +59,40 @@ tar -xzf mpd-sacd-arm64-bookworm.tar.gz -C relocated
 QEMU user 会引入后台线程，完整 MPD 启动可能触发启动线程检查。
 这里的单元测试、解码与动态链接验证不代表完整 daemon 或树莓派/DAC 实际播放通过。
 实板应运行安装器 `--check`，再用自己的 DAC 验证格式、DSD 和双向切换。
+
+## 32 位 armhf 目标
+
+给 32 位用户空间的树莓派（`file /usr/bin/mpd` 显示 `ELF 32-bit ... ARM, EABI5`，
+解释器 `/lib/ld-linux-armhf.so.3`）使用 armhf 目标。基线是 Debian Bookworm armhf：
+ARMv7-A + Thumb-2 + VFPv3-D16 硬浮点，glibc 2.36。覆盖 Pi 2/3/4/5 和 Zero 2 W；
+ARMv6 的 Pi 1 / Zero(1) 和 glibc 2.31 的 Bullseye 不在范围内。
+
+armhf 镜像以 arm64 镜像为基底叠加，先构建 arm64 镜像：
+
+```sh
+docker build -t mpd-sacd-rpi-cross:bookworm -f packaging/raspberrypi/Dockerfile .
+DOCKER_BUILDKIT=0 docker build -t mpd-sacd-rpi-cross:armhf - \
+    < packaging/raspberrypi/Dockerfile.armhf
+```
+
+`libupnp-dev` 的头文件路径不能多架构共存，armhf 镜像里把 arm64 的那份换成 armhf 的，
+因此该镜像只用于 armhf 构建。sacdiso/dvdaiso 需要其中的 libixml。
+
+构建、验证、打包都通过 `--arch armhf` 或 `CROSS_FILE` 选择目标：
+
+```sh
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+    -e CROSS_FILE=packaging/raspberrypi/armhf.ini \
+    --mount "type=bind,src=$PWD,dst=/src" \
+    mpd-sacd-rpi-cross:armhf sh packaging/raspberrypi/build.sh
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+    --mount "type=bind,src=$PWD,dst=/src" \
+    mpd-sacd-rpi-cross:armhf python3 packaging/raspberrypi/verify.py --arch armhf
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+    --mount "type=bind,src=$PWD,dst=/src" \
+    mpd-sacd-rpi-cross:armhf python3 packaging/raspberrypi/package.py --arch armhf
+```
+
+产物是 `build/rpi-armhf/mpd`，以及 `build/releases/mpd-sacd-armhf-bookworm.tar.gz`、
+`mpd-sacd-armhf-source.tar.gz` 和 `SHA256SUMS-armhf`。单元测试与解码验证在
+QEMU `cortex-a7` 下运行，其余说明与 arm64 一致。

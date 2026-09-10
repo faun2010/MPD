@@ -1,0 +1,22 @@
+# 32-bit ARM (armhf) cross-build image for Raspberry Pi / Debian 12 Bookworm.
+# Mirrors Dockerfile (arm64) but targets arm-linux-gnueabihf, glibc 2.36.
+# Base: the arm64 cross image from Dockerfile, which already carries clang-16,
+# meson, ninja and qemu-user.  Only the armhf toolchain and :armhf libraries
+# are added here.  libupnp-dev ships arch-specific headers at a shared path and
+# is therefore not multi-arch co-installable, so the arm64 copy is replaced by
+# the armhf one; this image builds armhf only.  libixml from it is required by
+# the sacdiso/dvdaiso decoders.
+FROM mpd-sacd-rpi-cross:bookworm
+RUN dpkg --add-architecture armhf \
+ && apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      crossbuild-essential-armhf binutils-arm-linux-gnueabihf \
+      libasound2-dev:armhf libfmt-dev:armhf libflac-dev:armhf \
+      libavformat-dev:armhf libavcodec-dev:armhf libavutil-dev:armhf \
+      libsoxr-dev:armhf libpcre2-dev:armhf \
+      zlib1g-dev:armhf libicu-dev:armhf libsqlite3-dev:armhf libgtest-dev:armhf \
+ && apt-get remove -y libupnp-dev:arm64 \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      libupnp-dev:armhf \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
