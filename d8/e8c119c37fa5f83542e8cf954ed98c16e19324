@@ -1,0 +1,40 @@
+packaging/raspberrypi/README-运行说明-armhf-bullseye.md
+  s_16335eec84f1b3::t_22b136ec9d453a 1-77
+packaging/raspberrypi/glibc231-compat.c
+  s_16335eec84f1b3::t_18653786735248 1-66
+packaging/raspberrypi/armhf-bullseye.ini
+  s_16335eec84f1b3::t_4e339c5d180cb0 22,26-28,32-33,43,45
+  s_16335eec84f1b3::t_bc948cd649b87b 41-42,48-49
+  s_16335eec84f1b3::t_46c2b954991cdb 7-10
+  s_16335eec84f1b3::t_ec403a365efc45 1-6,11-21,23-25,29-31,34-40,44,46-47
+packaging/raspberrypi/verify.py
+  s_16335eec84f1b3::t_348f7c879a2c5d 26-35,63-67,107-111,154
+packaging/raspberrypi/bullseye-sysroot.sh
+  s_16335eec84f1b3::t_761e9386b2f788 1-35,38,40,76-90,94-96,101-114,116-119
+  s_16335eec84f1b3::t_64bc006efcf18f 91-93,97-100
+  s_16335eec84f1b3::t_4e339c5d180cb0 115
+  s_16335eec84f1b3::t_c5940104f98946 36-37,39,41
+  s_16335eec84f1b3::t_b2e9d7baf9d8b4 42-75
+packaging/raspberrypi/Dockerfile.armhf-bullseye
+  s_16335eec84f1b3::t_ec403a365efc45 1-10
+packaging/raspberrypi/package.py
+  s_16335eec84f1b3::t_5107282df9002a 40,52-68,95-103,147-148,197-198,217-224,229-231,246-252,256,259,267,280,282-283,300-301,307-308
+packaging/raspberrypi/build.sh
+  s_16335eec84f1b3::t_5f5e94221d6609 3-4,9-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.5.11",
+  "base_commit_sha": "d8e8c119c37fa5f83542e8cf954ed98c16e19324",
+  "prompts": {},
+  "sessions": {
+    "s_16335eec84f1b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c364055-043b-4e1f-b854-1e7d3914a437",
+        "model": "claude-opus-5"
+      },
+      "human_author": "faun2010 <faun2005@gmail.com>"
+    }
+  }
+}
