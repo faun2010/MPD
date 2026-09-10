@@ -65,8 +65,11 @@ for deb in sorted(glob.glob(archives + "/*.deb")):
     for line in subprocess.check_output(["dpkg-deb", "-c", deb], text=True).splitlines():
         parts = line.split(None, 5)
         if len(parts) >= 6 and parts[0][0] == "-":
-            files.append(os.path.normpath("/" + parts[5].split(" -> ")[0].lstrip("."))
-                         + "\t" + info["Package"])
+            # dpkg-deb -c prints "./usr/...", which already starts with "/"
+            # once the leading dot is gone; prepending another gives "//usr",
+            # and POSIX normpath keeps exactly two leading slashes.
+            path = os.path.normpath(parts[5].split(" -> ")[0].lstrip("."))
+            files.append(path + "\t" + info["Package"])
 with open(os.path.join(sysroot, "PACKAGES.tsv"), "w") as out:
     out.write("binary_package\tversion\tsource_package\tsource_version\tarchitecture\n")
     out.write("\n".join(sorted(set(packages))) + "\n")
