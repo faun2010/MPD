@@ -37,6 +37,7 @@ TARGETS = {
         "source_archive": "mpd-sacd-arm64-source.tar.gz",
         "checksums": "SHA256SUMS-arm64",
         "readme": "packaging/raspberrypi/README-运行说明.md",
+        "suite": "Bookworm", "glibc": (2, 36),
     },
     "armhf": {
         "name": "mpd-sacd-armhf-bookworm", "build_dir": "build/rpi-armhf",
@@ -48,6 +49,23 @@ TARGETS = {
         "source_archive": "mpd-sacd-armhf-source.tar.gz",
         "checksums": "SHA256SUMS-armhf",
         "readme": "packaging/raspberrypi/README-运行说明-armhf.md",
+        "suite": "Bookworm", "glibc": (2, 36),
+    },
+    # Raspbian Bullseye.  The libraries are extracted into a sysroot rather than
+    # installed, so provenance comes from the manifests bullseye-sysroot.sh
+    # writes instead of dpkg-query.
+    "armhf-bullseye": {
+        "name": "mpd-sacd-armhf-bullseye", "build_dir": "build/rpi-armhf-bullseye",
+        "triplet": "arm-linux-gnueabihf", "deb_arch": "armhf",
+        "elf_machine": 40, "machine": "armv7l",
+        "loader": "/lib/ld-linux-armhf.so.3",
+        "qemu": ["qemu-arm", "-cpu", "cortex-a7"],
+        "target": "arm-linux-gnueabihf, ARMv7-A hard-float, little endian",
+        "source_archive": "mpd-sacd-armhf-bullseye-source.tar.gz",
+        "checksums": "SHA256SUMS-armhf-bullseye",
+        "readme": "packaging/raspberrypi/README-运行说明-armhf-bullseye.md",
+        "suite": "Bullseye", "glibc": (2, 31),
+        "sysroot": "/sysroot/bullseye-armhf",
     },
 }
 
@@ -72,6 +90,15 @@ def check_elf(path, spec):
     if (header[:5] != b"\x7fELF" + elf_class or header[5:6] != b"\x01" or len(header) != 20
             or struct.unpack("<H", header[18:20])[0] != spec["elf_machine"]):
         raise RuntimeError(f"Not a little-endian {spec['machine']} ELF: {path.name}")
+
+
+def read_sysroot_index(sysroot):
+    index = {}
+    for line in (sysroot / "FILES.tsv").read_text().splitlines():
+        path, _, package = line.partition("\t")
+        if package:
+            index[path] = package
+    return index
 
 
 def owning_package(source, deb_arch):
@@ -117,6 +144,8 @@ def main():
     args = parser.parse_args()
     spec = TARGETS[args.arch]
     triplet = spec["triplet"]
+    sysroot = Path(spec["sysroot"]) if spec.get("sysroot") else None
+    sysroot_index = read_sysroot_index(sysroot) if sysroot else None
     system_libs = SYSTEM_LIBS | {Path(spec["loader"]).name}
     build = (args.build_dir or ROOT / spec["build_dir"]).resolve()
     destination = args.output_dir.resolve()
@@ -165,7 +194,8 @@ def main():
         pending = [bundle / "bin/mpd"]
         copied = set()
         runtime_packages = set()
-        search = [Path("/lib") / triplet, Path("/usr/lib") / triplet]
+        prefix = sysroot or Path("/")
+        search = [prefix / "lib" / triplet, prefix / "usr/lib" / triplet]
         glibc_versions = set()
         while pending:
             file = pending.pop()
@@ -184,13 +214,21 @@ def main():
                 if source is None:
                     raise RuntimeError(f"Unresolved dependency: {dependency}")
                 copied.add(dependency)
-                runtime_packages.add(owning_package(source, spec["deb_arch"]))
+                if sysroot_index is not None:
+                    key = "/" + str(source.resolve().relative_to(sysroot))
+                    owner = sysroot_index.get(key)
+                    if owner is None:
+                        raise RuntimeError(f"Cannot identify package for bundled {dependency}")
+                    runtime_packages.add(owner)
+                else:
+                    runtime_packages.add(owning_package(source, spec["deb_arch"]))
                 target_lib = bundle / "lib" / dependency
                 shutil.copy2(source.resolve(), target_lib)
                 pending.append(target_lib)
         required_glibc = max(glibc_versions)
-        if required_glibc > (2, 36):
-            raise RuntimeError(f"Dependencies require glibc {required_glibc}, exceeding Bookworm baseline")
+        if required_glibc > spec["glibc"]:
+            raise RuntimeError(f"Dependencies require glibc {required_glibc}, "
+                               f"exceeding the {spec['suite']} baseline {spec['glibc']}")
 
         (bundle / "mpd").write_text('''#!/bin/sh
 set -eu
@@ -205,15 +243,20 @@ exec "$bundle_dir/bin/mpd" "$@"
         shutil.copy2(ROOT / "packaging/raspberrypi/mpd.conf.example", bundle / "mpd.conf.example")
         shutil.copy2(ROOT / "COPYING", bundle / "licenses/MPD-COPYING")
         shutil.copytree(ROOT / "LICENSES", bundle / "licenses/MPD")
-        packages = output(["dpkg-query", "-W", "-f=${binary:Package}\t${Version}\t${source:Package}\t${source:Version}\t${Architecture}\n"])
-        arm_packages = [line for line in packages.splitlines()
-                        if line.endswith("\t" + spec["deb_arch"])]
+        if sysroot:
+            arm_packages = [line for line in
+                            (sysroot / "PACKAGES.tsv").read_text().splitlines()[1:] if line]
+        else:
+            packages = output(["dpkg-query", "-W", "-f=${binary:Package}\t${Version}\t${source:Package}\t${source:Version}\t${Architecture}\n"])
+            arm_packages = [line for line in packages.splitlines()
+                            if line.endswith("\t" + spec["deb_arch"])]
         (bundle / "BUILD-PACKAGES.tsv").write_text(
             "binary_package\tversion\tsource_package\tsource_version\tarchitecture\n"
             + "\n".join(arm_packages) + "\n")
+        doc_root = (sysroot / "usr/share/doc") if sysroot else Path("/usr/share/doc")
         for line in arm_packages:
             package = line.split("\t")[0].split(":")[0]
-            notice = Path("/usr/share/doc") / package / "copyright"
+            notice = doc_root / package / "copyright"
             if notice.is_file():
                 shutil.copy2(notice, bundle / "licenses" / (package + "-copyright"))
             elif line.split("\t")[0] in runtime_packages:
@@ -221,7 +264,7 @@ exec "$bundle_dir/bin/mpd" "$@"
         # Debian copyright notices refer to these standard license texts.
         shutil.copytree("/usr/share/common-licenses", bundle / "licenses/common-licenses", symlinks=False)
         (bundle / "source/DEPENDENCIES.md").write_text(
-            f"The bundled libraries are unmodified Debian Bookworm {spec['deb_arch']} binaries.\n"
+            f"The bundled libraries are unmodified Debian {spec['suite']} {spec['deb_arch']} binaries.\n"
             "BUILD-PACKAGES.tsv records binary and source package names and exact versions.\n"
             "Corresponding Debian source packages (including Debian patches) are available from\n"
             "https://deb.debian.org/debian/pool/ and https://snapshot.debian.org/package/ .\n"
@@ -234,9 +277,10 @@ exec "$bundle_dir/bin/mpd" "$@"
             gz.write(archive.stdout)
 
         # Validate dynamic linking using only the relocated bundle's non-glibc libraries.
-        loader = subprocess.run([*spec["qemu"], "-L", "/", "-E",
+        loader = subprocess.run([*spec["qemu"], "-L", str(sysroot or "/"), "-E",
                                  "LD_LIBRARY_PATH=" + str(bundle / "lib"),
-                                 spec["loader"], "--list", str(bundle / "bin/mpd")],
+                                 str(sysroot or "") + spec["loader"],
+                                 "--list", str(bundle / "bin/mpd")],
                                 check=True, capture_output=True, text=True, timeout=60)
         if "not found" in loader.stdout + loader.stderr:
             raise RuntimeError("Bundle dependency resolution failed")
@@ -253,13 +297,15 @@ exec "$bundle_dir/bin/mpd" "$@"
         manifest = {
             "package": name, "machine": spec["machine"], "elf_machine": spec["elf_machine"],
             "version": json.loads((build / "meson-info/intro-projectinfo.json").read_text())["version"],
-            "target": spec["target"], "minimum_glibc": "2.36",
+            "target": spec["target"],
+            "minimum_glibc": ".".join(map(str, spec["glibc"])),
             "compiler": output(["clang++-16", "--version"]).splitlines()[0],
             "source_commit": revision, "compiled_source_commit": compiled_revision,
             "source_archive_sha256": sha256(source_archive),
             "binary_sha256": sha256(bundle / "bin/mpd"), "bundled_libraries": sorted(copied),
             "runtime_packages": sorted(runtime_packages),
-            "system_dependencies": ["glibc >= 2.36", "libasound2-data (ALSA configuration)"],
+            "system_dependencies": ["glibc >= " + ".".join(map(str, spec["glibc"])),
+                                    "libasound2-data (ALSA configuration)"],
             "hardware_playback_verified": False,
         }
         (bundle / "BUILD.json").write_text(json.dumps(manifest, indent=2) + "\n")

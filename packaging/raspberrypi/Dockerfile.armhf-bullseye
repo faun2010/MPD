@@ -1,0 +1,10 @@
+# Cross-build image targeting Raspbian/Debian Bullseye armhf (glibc 2.31).
+#
+# Bullseye's own GCC 10 cannot build MPD 0.25's C++23, and Bookworm binaries
+# need glibc 2.34.  So this image keeps Bookworm's clang 16 but links against a
+# Bullseye armhf sysroot, with libstdc++ pulled in statically.  The result
+# depends only on glibc 2.31 and the shared libraries Bullseye already ships.
+FROM mpd-sacd-rpi-cross:armhf
+COPY bullseye-sysroot.sh glibc231-compat.c /opt/bullseye-sysroot/
+RUN sh /opt/bullseye-sysroot/bullseye-sysroot.sh
+WORKDIR /src

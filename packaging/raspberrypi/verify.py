@@ -23,6 +23,16 @@ TARGETS = {
         "loader": "/lib/ld-linux-armhf.so.3",
         "qemu_cpu": "cortex-a7 (ARMv7-A hard-float)", "label": "armhf",
     },
+    # Bullseye libraries live in a sysroot, so QEMU must be pinned to it or it
+    # silently falls back to the image's own Bookworm armhf libraries.
+    "armhf-bullseye": {
+        "build_dir": "build/rpi-armhf-bullseye", "triplet": "arm-linux-gnueabihf",
+        "qemu": ["qemu-arm", "-cpu", "cortex-a7"],
+        "march": ["-march=armv7-a", "-mfpu=vfpv3-d16", "-mfloat-abi=hard"],
+        "loader": "/lib/ld-linux-armhf.so.3",
+        "qemu_cpu": "cortex-a7 (ARMv7-A hard-float)", "label": "armhf-bullseye",
+        "sysroot": "/sysroot/bullseye-armhf",
+    },
 }
 
 
@@ -50,7 +60,11 @@ def main():
     build = (args.build_dir or Path(spec["build_dir"])).resolve()
     report_dir = (args.report_dir or build / "verification").resolve()
     report_dir.mkdir(parents=True, exist_ok=True)
-    qemu = [*spec["qemu"], "-L", "/"]
+    sysroot = spec.get("sysroot")
+    qemu = [*spec["qemu"], "-L", sysroot or "/"]
+    if sysroot:
+        qemu += ["-E", "LD_LIBRARY_PATH=" + ":".join(
+            (f"{sysroot}/lib/{spec['triplet']}", f"{sysroot}/usr/lib/{spec['triplet']}"))]
     config = report_dir / "decoder.conf"
     config.write_text('decoder {\n plugin "dsdiff"\n lsbitfirst "no"\n use_stdio "yes"\n}\n'
                       'decoder {\n plugin "sacdiso"\n lsbitfirst "no"\n use_stdio "yes"\n}\n')
@@ -90,8 +104,11 @@ int main(int argc, char **argv) {
     return ok ? 0 : 4;
 }
 ''')
-    run([spec["triplet"] + "-gcc", *spec["march"], str(helper), "-o",
-         str(report_dir / "codec_probe"), "-lFLAC", "-lavcodec", "-lavformat"])
+    probe = [spec["triplet"] + "-gcc", *spec["march"]]
+    if sysroot:
+        probe.append("--sysroot=" + sysroot)
+    run([*probe, str(helper), "-o", str(report_dir / "codec_probe"),
+         "-lFLAC", "-lavcodec", "-lavformat"])
     run(qemu + [str(report_dir / "codec_probe"), str(report_dir / "synthetic.flac")])
     cases = [("DFF", "dsdiff", str(report_dir / "synthetic.dff"), dsd, 0),
              ("FLAC", "flac", str(report_dir / "synthetic.flac"), pcm, 0)]
@@ -134,7 +151,7 @@ int main(int argc, char **argv) {
         # This can be pointed at an extracted bundle to prove relocation.
         bundle = args.bundle_dir.resolve()
         result = run(qemu + ["-E", "LD_LIBRARY_PATH=" + str(bundle / "lib"),
-                            spec["loader"], "--list", str(bundle / "bin/mpd")],
+                             spec["loader"], "--list", str(bundle / "bin/mpd")],
                      capture_output=True, text=True)
         if "not found" in result.stdout + result.stderr:
             raise RuntimeError("Bundled dependency not found")

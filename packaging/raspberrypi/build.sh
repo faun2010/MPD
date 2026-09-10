@@ -1,12 +1,14 @@
 #!/bin/sh
 # Run inside the Debian Bookworm cross-build image; never installs on the host.
-# CROSS_FILE selects the target: aarch64.ini (default) or armhf.ini.
+# CROSS_FILE selects the target: aarch64.ini (default), armhf.ini or
+# armhf-bullseye.ini.
 set -eu
 cd "$(dirname "$0")/../.."
 cross_file=${CROSS_FILE:-packaging/raspberrypi/aarch64.ini}
 case $cross_file in
-    *armhf*) default_build_dir=build/rpi-armhf ;;
-    *)       default_build_dir=build/rpi-arm64 ;;
+    *armhf-bullseye*) default_build_dir=build/rpi-armhf-bullseye ;;
+    *armhf*)          default_build_dir=build/rpi-armhf ;;
+    *)                default_build_dir=build/rpi-arm64 ;;
 esac
 build_dir=${BUILD_DIR:-$default_build_dir}
 if [ -f "$build_dir/meson-private/coredata.dat" ]; then
