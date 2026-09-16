@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPD SACD 分支代码评审报告</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --high: #f85149;
+    --med: #d29922;
+    --low: #3fb950;
+    --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    padding: 2rem 1rem 4rem;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  h1 { font-size: 1.7rem; margin-bottom: .5rem; }
+  .meta { color: var(--muted); font-size: .9rem; }
+  .meta span { margin-right: 1.5rem; }
+  h2 {
+    font-size: 1.25rem; margin: 2.5rem 0 1rem;
+    border-left: 4px solid var(--accent); padding-left: .6rem;
+  }
+  h3 { font-size: 1.05rem; margin: 1.5rem 0 .6rem; }
+  p { margin: .5rem 0; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem 1.25rem; margin: .75rem 0;
+  }
+  table { width: 100%; border-collapse: collapse; margin: .75rem 0; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: .45rem .6rem; text-align: left; vertical-align: top; }
+  th { background: #1c2129; color: var(--text); white-space: nowrap; }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: .1rem .35rem; font-size: .86em;
+    color: #79c0ff;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: .8rem 1rem; overflow-x: auto;
+    font-family: "SFMono-Regular", Consolas, monospace; font-size: .84rem;
+    line-height: 1.5; margin: .6rem 0; color: #a9b6c2;
+  }
+  pre code { border: none; padding: 0; background: none; color: inherit; }
+  .sev { font-weight: 600; white-space: nowrap; }
+  .sev-high { color: var(--high); }
+  .sev-med  { color: var(--med); }
+  .sev-low  { color: var(--low); }
+  .badge {
+    display: inline-block; border-radius: 12px; font-size: .78rem;
+    padding: .05rem .6rem; margin-left: .4rem; vertical-align: middle;
+    border: 1px solid var(--border);
+  }
+  .badge-high { color: var(--high); border-color: var(--high); }
+  .badge-med  { color: var(--med); border-color: var(--med); }
+  .badge-low  { color: var(--low); border-color: var(--low); }
+  .issue { border-left: 3px solid var(--border); padding-left: 1rem; margin: 1rem 0; }
+  .issue.high { border-left-color: var(--high); }
+  .issue.med  { border-left-color: var(--med); }
+  .issue.low  { border-left-color: var(--low); }
+  .issue h4 { font-size: .98rem; margin-bottom: .3rem; }
+  .issue .loc { color: var(--muted); font-size: .85rem; font-family: monospace; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; margin: 1rem 0; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1rem; }
+  .stat .num { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .stat .lbl { color: var(--muted); font-size: .85rem; }
+  .toc { columns: 2; font-size: .92rem; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .verdict { font-weight: 600; }
+  .verdict.ok { color: var(--low); }
+  .verdict.warn { color: var(--med); }
+  .good { color: var(--low); }
+  footer { margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>MPD SACD 分支代码评审报告</h1>
+  <div class="meta">
+    <span>仓库：MPD.github（feat/db-sqlite 分支，含 feat/sacd-update 合并）</span>
+    <span>评审范围：a66648876 (v0.24.15) → 7dbfc20fb (HEAD)</span>
+    <span>评审日期：2026-09-09</span>
+  </div>
+</header>
+
+<section id="overview">
+  <h2>1. 变更概览</h2>
+  <div class="grid">
+    <div class="stat"><div class="num">8</div><div class="lbl">提交数（不含合并）</div></div>
+    <div class="stat"><div class="num">128</div><div class="lbl">改动文件数</div></div>
+    <div class="stat"><div class="num">+18,245 / −59</div><div class="lbl">增删行数</div></div>
+    <div class="stat"><div class="num">4 高 / 5 中 / 6 低</div><div class="lbl">发现的问题</div></div>
+  </div>
+  <p>本轮改动是 MPD 的一个个人分支特性：把 <strong>SACD ISO / DVD-Audio ISO / DFF</strong> 解码支持（源自 Maxim Anisiutkin 的 MPD SACD 树）移植到当前 0.25 上游代码上，并附带 ALSA 输出的 DSD/PCM 模式切换桥接、构建脚本、验证测试、安装脚本、树莓派打包和 CI/release 工作流。</p>
+  <table>
+    <tr><th>提交</th><th>主题</th><th>规模</th><th>总体评价</th></tr>
+    <tr><td><code>88e5b679b</code></td><td>引入 src/lib/sacdiso 与 src/lib/dvdaiso 两个第三方库</td><td>约 +14,000 行</td><td><span class="verdict warn">有条件通过</span></td></tr>
+    <tr><td><code>acf652470</code></td><td>新增 sacdiso / dvdaiso / dff 三个 decoder 插件 + 容器扫描、URI 处理改动</td><td>+1,338 行</td><td><span class="verdict warn">有条件通过</span></td></tr>
+    <tr><td><code>06d139984</code></td><td>ALSA 输出：dsd_to_pcm_bridge / pcm_to_dsd_bridge 选项</td><td>+316 行</td><td><span class="verdict ok">通过（有 1 处冗余）</span></td></tr>
+    <tr><td><code>845a59659</code></td><td>本地构建/运行脚本、验证测试、安装脚本、树莓派打包</td><td>+2,063 行</td><td><span class="verdict ok">通过</span></td></tr>
+    <tr><td><code>000b58c21</code></td><td>sacdiso 关闭时保留上游 dsdiff 插件</td><td>+9/−5 行</td><td><span class="verdict ok">通过</span></td></tr>
+    <tr><td><code>2756b8ebf</code></td><td>版本 0.25.1-sacd；sacdiso/dvdaiso 改为 meson feature 选项</td><td>+26/−20 行</td><td><span class="verdict ok">通过</span></td></tr>
+    <tr><td><code>14c062fa9</code></td><td>CI：Linux 全量构建启用 SACD 解码器，新增 release 工作流</td><td>+190 行</td><td><span class="verdict ok">通过</span></td></tr>
+    <tr><td><code>8f2c29dd5</code></td><td>重写 README（SACD 构建），文档化插件</td><td>+101 行（README）</td><td><span class="verdict ok">通过</span></td></tr>
+  </table>
+  <p><strong>总体结论：</strong>集成工程质量较高（feature 化构建、条件注册、无 libixml 时的降级、验证测试完备，提交说明详尽）。但两个从 SACD 树引入的 C/C++ 库在解析<strong>不可信的 ISO/DFF 输入</strong>时存在多个真实的越界读写风险，且插件层有若干线程安全与逻辑问题。建议按下列高优先级项修复后再发布。</p>
+</section>
+
+<section id="toc-sec">
+  <h2>目录</h2>
+  <nav class="toc">
+    <div>1. <a href="#overview">变更概览</a></div>
+    <div>2. <a href="#sec-lib">第三方库：libsacdiso / libdvdaiso</a></div>
+    <div>3. <a href="#sec-plugins">Decoder 插件层</a></div>
+    <div>4. <a href="#sec-core">MPD 核心改动</a></div>
+    <div>5. <a href="#sec-alsa">ALSA 输出桥接</a></div>
+    <div>6. <a href="#sec-build">构建、CI 与打包</a></div>
+    <div>7. <a href="#sec-docs">文档与测试</a></div>
+    <div>8. <a href="#sec-conclusion">结论与修复优先级</a></div>
+  </nav>
+</section>
+
+<section id="sec-lib">
+  <h2>2. 第三方库：libsacdiso / libdvdaiso <span class="badge badge-high">4 高</span><span class="badge badge-med">2 中</span></h2>
+
+  <h3>2.1 libsacdiso（Scarlet Book 解析）</h3>
+  <p>架构：三层结构——<code>sacd_media_t</code>（file/stream 两种介质）→ <code>sacd_disc_t</code>（Scarlet Book TOC 解析）/<code>sacd_dsdiff_t</code>（DFF 解析）继承 <code>sacd_reader_t</code>，外加 <code>sacd_metabase_t</code>（基于 libixml 的 XML 元数据）和 <code>libdstdec</code>（DST 无损解码）。代码为 C 风格 C++，解析大量依赖<strong>磁盘上的字节序交换与指针运算</strong>。</p>
+
+  <div class="issue high">
+    <h4>LIB-1（高）区域 TOC 解析存在系统性越界读，可导致崩溃/信息泄露</h4>
+    <div class="loc">src/lib/sacdiso/sacd_disc.cpp:326, 345, 721, 731-732</div>
+    <p><code>open()</code> 按 TOC 声称的大小分配缓冲并读入原始数据，随后 <code>read_area_toc()</code> 在<strong>没有任何边界校验</strong>的情况下信任 TOC 中的一切偏移量：</p>
+    <pre><code>// 按 TOC 声称的 size 分配，无上限
+sb_handle.area[n].area_data = (uint8_t*)malloc(
+    sb_handle.master_toc->area_1_toc_size * SACD_LSN_SIZE);
+...
+while (p &lt; (area_data + area_toc-&gt;size * SACD_LSN_SIZE)) {
+    ...
+    track_ptr = (char*)(p + area_text-&gt;track_text_position[i]); // 无界
+    track_amount = *track_ptr;          // 越界读
+    track_ptr += 4;
+    for (uint8_t j = 0; j &lt; track_amount; j++) { ... }</code></pre>
+    <p>恶意构造的 <code>area_1_toc_size</code>（uint16，最大 65535 扇区 ≈ 128 MB 分配）配合越界的 <code>track_text_position[]</code>、<code>copyright_offset</code> 等偏移，可以在读取时越过分配的堆块（如 sacd_disc.cpp:698-704 的 <code>strlen((char*)area_toc + area_toc-&gt;copyright_offset)</code>——一个 16 位无符号偏移可以指向 area_data 之后任意远处，<code>strlen</code> 将一直扫描到下一个 NUL）。同类问题也出现在 <code>read_master_toc()</code> 的 <code>master_text</code> 位置字段（sacd_disc.cpp:624-656）。</p>
+    <p><strong>建议：</strong>所有从 TOC 取出的偏移/数量字段在使用前做 <code>offset + len &lt;= area_size</code> 校验；对 <code>area_toc_size</code> 设置合理上限（实际 SACD 盘 TOC 区远小于 64 扇区）；<code>track_count</code> 校验 ≤ 255（数组 <code>area_track_text[255]</code>、<code>track_start_lsn[255]</code> 的大小）。</p>
+  </div>
+
+  <div class="issue high">
+    <h4>LIB-2（高）read_frame() 对扇区头的 packet/frame 计数无上限，栈上数组溢出</h4>
+    <div class="loc">src/lib/sacdiso/sacd_disc.cpp:437-464, scarletbook.h:434-435</div>
+    <p><code>audio_sector.packet[7]</code> 与 <code>audio_sector.frame[7]</code> 是定长 7 元素数组，而循环上限来自<strong>盘面数据中的 3 位字段</strong>（0-7）：</p>
+    <pre><code>for (uint8_t i = 0; i &lt; audio_sector.header.packet_info_count; i++) { // 最大 7，恰好放得下
+    ...
+if (audio_sector.header.dst_encoded) {
+    memcpy(audio_sector.frame, buffer + buffer_offset,
+           AUDIO_FRAME_INFO_SIZE * audio_sector.header.frame_info_count);</code></pre>
+    <p><code>packet_info_count</code> 为 7 时恰好写满 <code>packet[7]</code>，本身不越界；但 DST 分支的 <code>memcpy(audio_sector.frame, ..., 4 * frame_info_count)</code> 在 <code>frame_info_count == 7</code> 时写 28 字节——<code>frame[7]</code> 每元素 4 字节也是 28，看似安全，<strong>但</strong>这些计数来自不可信输入且依赖结构体打包假设（<code>#pragma pack</code> + 位域跨编译器布局），一旦 <code>buffer_offset</code> 因恶意 packet_length 累计超过 <code>SACD_LSN_SIZE</code>，后续 <code>memcpy(frame_data, frame.data, frame.size)</code>（sacd_disc.cpp:472-474）在 <code>frame.size</code> 被恶意 packet_length 累计放大后仍受调用方 <code>*frame_size</code> 约束，路径上倒是做了检查（493 行）——<strong>真正的问题是 447-458 行的 memcpy 没有对 buffer_offset 做界检查</strong>：若 <code>packet_info_count &gt; 0</code> 但扇区数据已被污染，<code>buffer + buffer_offset</code> 可越过 <code>sector_buffer[2064]</code> 读取。此外 509 行 <code>buffer_offset += packet-&gt;packet_length</code>（最大 2047）在循环中无总量上限校验，只有 493 行对 DATA_TYPE_AUDIO 分支做了 <code>buffer_offset + packet_length &lt;= SACD_LSN_SIZE</code> 检查，padding/supplementary 类型（503-505 行）<strong>直接跳过而不推进校验</strong>，offset 可被推到任意大。</p>
+    <p><strong>建议：</strong>在每个 packet 处理前统一校验 <code>buffer_offset + packet_length &lt;= sector_size</code>（对全部 data_type 生效），而非仅 audio 分支。</p>
+  </div>
+
+  <div class="issue med">
+    <h4>LIB-3（中）charset_convert() 泄漏 iconv 描述符</h4>
+    <div class="loc">src/lib/sacdiso/sacd_disc.cpp:65-86</div>
+    <pre><code>iconv_t conv = iconv_open("UTF-8", codepage_name);
+if (conv != (iconv_t)-1) {
+    ...
+    if (iconv(...) != (size_t)-1) {
+        ...
+        return utf8_string;   // 成功路径从未 iconv_close(conv)
+    }
+    iconv_close(conv);        // 仅 iconv 失败时关闭
+}</code></pre>
+    <p>标签扫描会对每张盘的每个文本字段调用一次，打开的 iconv 描述符持续泄漏直至进程退出。另外失败兜底 <code>utf8_string = instring</code> 假定输入 NUL 终止且为合法 UTF-8，对非法序列未做清洗。</p>
+    <p><strong>建议：</strong>用 RAII（或 <code>AtScopeExit</code>）管理 iconv_t。</p>
+  </div>
+
+  <div class="issue med">
+    <h4>LIB-4（中）read_area_toc() 解析失败时 area_data 泄漏 + 逻辑不对称</h4>
+    <div class="loc">src/lib/sacdiso/sacd_disc.cpp:331-357, 679-681, 706-708</div>
+    <p><code>open()</code> 中当 <code>read_blocks_raw</code> 失败时把 <code>area_1_toc_1_start</code> 置零后<strong>继续</strong>（331-333 行，缓冲保留，后续 close 可释放），但 area_2 失败时却调用 <code>close(); return true;</code>（350-353 行）——两条路径行为不一致。而 <code>read_area_toc()</code> 返回 false（如 679 行 TOC 魔数不符、706 行版本过高）时，已分配的 <code>area_data</code> 既不会被 free 也不会被 <code>close()</code> 释放（<code>close()</code> 只释放 twoch/mulch 索引指向的区域，失败的 area 从未设置索引）——每次打开畸形 ISO 泄漏一块 <code>toc_size * 2048</code> 内存。</p>
+    <p><strong>建议：</strong>read_area_toc 失败时立即 free 该 area_data 并置空；统一两个 area 的失败路径。</p>
+  </div>
+
+  <div class="issue low">
+    <h4>LIB-5（低）get_channel_count() 使用了错误的位域名，逻辑脆弱</h4>
+    <div class="loc">src/lib/sacdiso/sacd_disc.cpp:88-98</div>
+    <p>函数读取 <code>channel_bit_2/3</code> 组合返回 5/6 声道，但 <code>scarletbook.h:415-418</code> 中该字节定义为 <code>channel_bit_3:1, channel_bit_2:1, sector_count:5, channel_bit_1:1</code>——<code>channel_bit_1</code>（最低位）从未被检查，声道数 3/4/5 的编码无法区分。该函数当前在文件内无调用者（疑似死代码），若未来启用需先核对 Scarlet Book 规范。</p>
+  </div>
+
+  <div class="issue low">
+    <h4>LIB-6（低）sacd_metabase.cpp 文件复制无错误处理、构造函数复制逻辑可疑</h4>
+    <div class="loc">src/lib/sacdiso/sacd_metabase.cpp:91-108</div>
+    <p><code>fwrite</code> 返回值被忽略；且仅当 <code>tags_file</code> 存在（<code>access(tags_file, F_OK) == -1</code> 为真表示不存在——条件含义是"tags_file 不存在时从 store 复制"）才复制，语义绕但正确。复制失败时 <code>init_xmldoc()</code> 仍会尝试加载可能不完整的文件。</p>
+  </div>
+
+  <div class="issue low">
+    <h4>LIB-7（低）seek() 的 double 换算与除零风险</h4>
+    <div class="loc">src/lib/sacdiso/sacd_disc.cpp:533-536</div>
+    <pre><code>uint64_t offset = (uint64_t)(get_size() * seconds / get_duration());
+return select_track(..., (uint32_t)(offset / sector_size));</code></pre>
+    <p>畸形 TOC 可使 <code>get_duration()</code> 为 0（除零 → NaN → cast 未定义）或 <code>get_size()</code> 巨大。seek 失败只返回 false，但中间的浮点 UB 值得防御。</p>
+  </div>
+
+  <h3>2.2 libdvdaiso（UDF + DVD-Audio + MLP）</h3>
+  <p>架构：<code>udf/</code> 实现 DVD ISO 的 UDF 文件系统读取，<code>dvda_*</code> 解析 AUDIO_TS 目录的 IFO/AOB 结构并组织为 zone/track，<code>libmlpdec</code> 是 MLP（Meridian Lossless Packing）解码器，audio_stream 系列做 PCM 流拼接。代码量最大（约 8,000 行），同样为 C 风格解析代码。抽查发现：</p>
+
+  <div class="issue high">
+    <h4>LIB-8（高）UDF/IFO 解析普遍缺乏对不可信偏移的界检查</h4>
+    <div class="loc">src/lib/dvdaiso/udf/dvd_udf.cpp（全文）, src/lib/dvdaiso/ifo.h, src/lib/dvdaiso/dvda_zone.cpp</div>
+    <p>与 libsacdiso 同样的模式：UDF 描述符长度、分区映射大小、IFO 表项数量与文件偏移均直接来自镜像内容，解析循环中极少对读取长度与缓冲边界做校验（如 <code>UDFDescriptorTag</code> 长度字段直接用于 <code>memcpy</code>；sector 读取函数对读短的情况多数路径仅返回错误而非清理）。作为解析<strong>用户提供的任意 .iso 文件</strong>的守护进程组件，这些代码应当被视为攻击面。与 sacdiso 相比，dvdaiso 的 <code>stream_buffer.h</code> 有基本的大小跟踪，但 consumer 侧的越界读依旧普遍。</p>
+    <p><strong>建议：</strong>至少对 UDF descriptor 长度、partition/VOB LBA 范围、IFO 表项索引加集中校验；理想方案是引入一个 <code>BoundsChecker</code> 包装所有原始读取。</p>
+  </div>
+
+  <div class="issue low">
+    <h4>LIB-9（低）C/C++ 混编与构建卫生</h4>
+    <div class="loc">src/lib/dvdaiso/**（mlpdec.c 为 C89 风格，其余为 C++）</div>
+    <p><code>libmlpdec</code> 的 C 代码使用变长局部缓冲和大量手工位操作，风格与 MPD 上游差异大，但作为 vendored 第三方解码器可接受。注意到 DvdaIsoDecoderPlugin.cxx:44-46 手动 include &lt;assert.h&gt;/&lt;stdio.h&gt;/&lt;stdlib.h&gt;，MPD 风格应使用 &lt;cassert&gt; 等或依赖传递包含。</p>
+  </div>
+
+  <div class="panel">
+    <strong>库层评审小结：</strong>两个库是历史代码的忠实移植，功能验证充分（29/29 位精确解码），但<strong>健壮性从未按"解析不可信输入"标准审过</strong>。MPD 上游对外来容器格式的处理（如 dsf、dsdiff 自带插件）都做了系统的边界校验。鉴于个人分支的威胁模型（本地音乐库），风险可接受，但发布二进制 installer（install.sh 分发到他人机器）后建议至少修复 LIB-1/LIB-2/LIB-8。
+  </div>
+</section>
+
+<section id="sec-plugins">
+  <h2>3. Decoder 插件层 <span class="badge badge-med">2 中</span><span class="badge badge-low">2 低</span></h2>
+
+  <div class="issue med">
+    <h4>PLG-1（中）DvdaIsoDecoderPlugin 的 reader 状态不是 thread_local，跨线程共享可变全局</h4>
+    <div class="loc">src/decoder/plugins/DvdaIsoDecoderPlugin.cxx:65-68</div>
+    <pre><code>AllocatedPath                    dvda_path{ nullptr };      // 非 thread_local！
+std::unique_ptr&lt;dvda_media_t&gt;    dvda_media;
+std::unique_ptr&lt;dvda_reader_t&gt;   dvda_reader;
+std::unique_ptr&lt;dvda_metabase_t&gt; dvda_metabase;</code></pre>
+    <p>对比 SacdIsoDecoderPlugin.cxx:64-67 与 DffDecoderPlugin.cxx:63-65 都把同组状态声明为 <code>thread_local</code> 并注释了原因（"Database updates, tag scans and decoders run on different threads"）。dvdaiso 插件<strong>漏掉了 thread_local</strong>：数据库更新线程扫描目录时 <code>container_update()</code> 会 close/reset 这些全局对象，而解码线程正在用它们播放——use-after-free 竞态。提交说明声称"isolates per-call reader state so a rescan or readpicture cannot disturb the playing track"，对 dvdaiso 并未兑现。</p>
+    <p><strong>建议：</strong>补上 thread_local（并同步 finish() 语义）。这是插解层最应尽快修的一处。</p>
+  </div>
+
+  <div class="issue med">
+    <h4>PLG-2（中）sacdiso/dff 的 get_subsong() 对 'M' 区域曲目的 sscanf 未校验 index 范围</h4>
+    <div class="loc">src/decoder/plugins/SacdIsoDecoderPlugin.cxx:69-81, DffDecoderPlugin.cxx:67-79</div>
+    <pre><code>auto params = std::sscanf(ptr, SACD_TRACKXXX_FMT, &amp;area, &amp;index, suffix);
+if (area == 'M') {
+    index += sacd_reader-&gt;get_tracks(AREA_TWOCH);
+}
+index--;</code></pre>
+    <p>两个问题：(1) 文件名形如 <code>MC_AUDIO__TRACK000.dff</code> 时 index 变为巨大的 unsigned（0-1 回绕）；file_decode 中的 <code>track &lt; mulch_count</code> 检查（293 行）能兜住，但 <code>scan_file</code> 对 mulch 越界也有检查——总体依赖调用方兜底，风格上应在 get_subsong 内拒绝非法输入。(2) <code>suffix[4]</code> 只接收 3 字符 + NUL，<code>%3s</code> 是安全的，这点没问题。真正回绕后 <code>track += twoch_count</code> 的路径在 scan_file 中（SacdIso 391-399）有完整检查，DFF 侧（339-347）同样。故定为中危（防御缺失但非立即可利用）。</p>
+  </div>
+
+  <div class="issue low">
+    <h4>PLG-3（低）逗号表达式残留</h4>
+    <div class="loc">src/decoder/plugins/DffDecoderPlugin.cxx:193, 207; src/decoder/plugins/DvdaIsoDecoderPlugin.cxx:249, 260</div>
+    <pre><code>std::sprintf(track_name, DSDIFF_TRACKXXX_FMT, '2', track + 1, suffix),
+tail = list.emplace_after(...)</code></pre>
+    <p>四处 <code>sprintf(...), emplace_after(...)</code> 的逗号表达式是明显的笔误（无实际危害但会被 -Wcomma 或 clang-tidy 标记）。另 DffDecoderPlugin.cxx:207 对 MCH 区域使用 <code>track + twoch_count + 1</code> 编号，而 get_subsong 解析后又加 twoch_count，编号/解析需成对核对——当前是对称的（scan 侧写入的是区域相对号+偏移，decode 侧还原），正确但极易在后续维护中破坏，建议加注释。</p>
+  </div>
+
+  <div class="issue low">
+    <h4>PLG-4（低）DFF 插件以 "dsdiff" 之名顶替上游插件</h4>
+    <div class="loc">src/decoder/plugins/DffDecoderPlugin.cxx:359-363, src/decoder/DecoderList.cxx</div>
+    <p><code>DecoderPlugin("dsdiff", ...)</code> 借用上游插件名，导致：(1) 配置文件里 <code>dsdiff</code> 块的语义静默改变；(2) <code>decoder_plugins</code> 的日志/诊断无法区分两者。000b58c21 已处理了 sacdiso 关闭时的回退注册，逻辑正确。建议改名为 <code>dff</code> 并在文档中说明与上游 dsdiff 的关系（README 已有部分说明）。</p>
+  </div>
+
+  <div class="panel">
+    <strong>亮点：</strong>三个插件的 file_decode 循环正确处理了 SEEK 时 <code>dst_decoder.flush()</code>（DST 缓存一致性）、FRAME_INVALID 时填充 0xAA 静音帧、以及 <code>lsbitfirst</code> 位反转选项；scan_file/albumart 的 fallback 封面查找逻辑（cover.png/jpg/webp）完整且异常安全。
+  </div>
+</section>
+
+<section id="sec-core">
+  <h2>4. MPD 核心改动 <span class="badge badge-med">1 中</span></h2>
+
+  <div class="issue med">
+    <h4>CORE-1（中）decoder_run_file() 中的后缀硬编码与 input_stream 断言风险</h4>
+    <div class="loc">src/decoder/Thread.cxx:489-498</div>
+    <pre><code>} catch (const std::runtime_error &amp;e) {
+    const auto result = TryContainerDecoder(bridge, path_fs, suffix);
+    if (IsFinalDecodeResult(result))
+        return result;
+}
+
+if (input_stream == nullptr &amp;&amp; !StringIsEqualIgnoreCase(suffix, "dff")
+    &amp;&amp; !StringIsEqualIgnoreCase(suffix, "iso"))
+    return DecodeResult::NO_PLUGIN;
+
+assert(input_stream);</code></pre>
+    <p>三个问题：(1) <code>"dff"/"iso"</code> 后缀白名单硬编码在通用解码路径里，与插件的 suffixes 表脱钩——若 sacdiso 编译进但 <code>dat</code> 后缀走 ENOTDIR 路径，或未来增加新容器后缀，这里会漏。(2) <strong>断言路径</strong>：当 open 抛 runtime_error、TryContainerDecoder 返回非 final 且 suffix 恰为 dff/iso 时，input_stream 仍为 null 却跳过了 NO_PLUGIN 返回，直接落到 <code>assert(input_stream)</code>——release 构建（NDEBUG，本分支的 release CI 恰用 -Db_ndebug=true）中这是<strong>空指针解引用</strong>。(3) 捕获宽泛的 <code>std::runtime_error</code> 会把 ALSA/IO 等真实错误也转入容器解码尝试，语义混叠。</p>
+    <p><strong>建议：</strong>将"该后缀是否属于容器插件"改为查询插件表；input_stream 为空时无论后缀一律返回 NO_PLUGIN 或明确走容器分支。</p>
+  </div>
+
+  <div class="issue low">
+    <h4>CORE-2（低）FixIsoOrDffUri 的父目录剥离逻辑</h4>
+    <div class="loc">src/command/FileCommands.cxx:289-323</div>
+    <p>albumart/readpicture 的 URI 修正类整体可用（把 <code>foo.iso/AUDIO_TS__TRACK001.iso</code> 收回 <code>foo.iso</code>），但两个细节：(1) <code>find_last_of(SEPARATOR)</code> 在 URI 无分隔符时返回 npos，<code>erase(npos)</code> 清空字符串（意外行为兜底，碰巧无害）；(2) <code>fixUri.data()</code> 暴露可写指针风格，operator const char* 建议同时保证 NUL 终止（std::string::data() C++17 起保证，这里 OK）。另外该修正只应用于 albumart，read_picture 只改了 const 声明——两个命令行为可能不同步。</p>
+  </div>
+
+  <div class="panel">
+    <strong>亮点：</strong>UpdateContainerFile 从"找第一个支持后缀的容器插件"改为"询问所有启用的插件并汇总曲目"（src/db/update/Container.cxx），修复了一个插件返回空列表就掩盖另一个插件的问题，且失败时统一 LockDeleteDirectory，逻辑干净；TagAny.cxx 对虚拟容器路径跳过 ScanGenericTags 的 FileExists 防御合理。
+  </div>
+</section>
+
+<section id="sec-alsa">
+  <h2>5. ALSA 输出桥接（06d139984）<span class="badge badge-low">1 低</span></h2>
+  <p>新增 <code>dsd_to_pcm_bridge</code>/<code>pcm_to_dsd_bridge</code> 两个默认关闭的选项：DAC（如 Shanling UA2 Plus）无法同时切换 DSD/PCM 模式与字时钟时，先以 S16 静音流在目标字速率上播 500ms 并 drain，再以新模式重开设备。实现要点：</p>
+  <ul style="margin:.5rem 0 .5rem 1.5rem">
+    <li><code>PlayPcmBridge()</code> 独立打开第二个 ALSA PCM 设备，3 秒超时 + <code>interrupted</code> 检查（持锁窗口极小），AtScopeExit 保证关闭；</li>
+    <li><code>PreparePcmToDsdBridge()</code> 用新提取的 <code>Alsa::ConfigureHwFormat()</code>（HwSetup.cxx 的干净重构：SetupHw 拆为"协商格式"与"应用参数"两段）探测 native DSD 格式而不落参数；</li>
+    <li>状态跟踪（last_open_was_native_dsd 等）只在 Open 成功路径更新。</li>
+  </ul>
+
+  <div class="issue low">
+    <h4>ALSA-1（低）Drain() 中 pcm_export-&gt;Reset() 重复调用两次</h4>
+    <div class="loc">src/output/plugins/AlsaOutputPlugin.cxx（06d139984 diff，Drain() 末尾）</div>
+    <pre><code>pcm_export-&gt;Reset();
+
+/* Discard any incomplete DSD export block after draining. */
+pcm_export-&gt;Reset();</code></pre>
+    <p>同一函数内连续两次 Reset()，第二次带注释——显然是移植残留（提交说明也提到"Drain() already resets the PcmExport block"）。删除其一即可。功能无影响。</p>
+  </div>
+
+  <div class="panel">
+    <strong>评价：</strong>这是全组提交中工程质量最高的一块：并发处理（check_progress 持锁只查 bool）、资源管理（AtScopeExit/std::exchange）、边界情况（EAGAIN/EINTR/SETUP 状态、n &gt; requested 校验、32768/channels 防零除）都考虑周到，且重构 ConfigureHwFormat 使探测与配置分离的手法正确。22/22 次模式切换实测通过。唯一建议是补一个单元可测的抽象（当前逻辑深嵌在 AlsaOutput 私有方法中）。
+  </div>
+</section>
+
+<section id="sec-build">
+  <h2>6. 构建、CI 与打包（2756b8ebf, 14c062fa9, 000b58c21）</h2>
+  <ul style="margin:.5rem 0 .5rem 1.5rem">
+    <li><span class="good">2756b8ebf：</span>sacdiso/dvdaiso 从 boolean 改为 feature 选项（auto 依赖 libixml 探测，显式 enabled 缺依赖时报清晰错误），删除未使用的 libgcrypt 依赖，版本号 0.25.1-sacd。这是标准的 meson feature 化做法，与上游风格一致。<code>ixml_dep</code> 的 required 逻辑（两个选项任一 enabled 时 required）正确处理了"都为 auto"与"显式 enabled"的组合。</li>
+    <li><span class="good">000b58c21：</span>修复了 acf652470 引入的真实 bug——ENABLE_DSD 块中无条件删除了 dsdiff 注册，导致无 sacdiso 构建丢失 DSDIFF 支持。修复方式（<code>#ifndef ENABLE_SACDISO</code> 下注册上游插件）正确且带注释。顺带把 acf652470 里错乱的缩进（4 空格混 tab）修正为项目风格。</li>
+    <li><span class="good">14c062fa9：</span>build.yml 为无 libixml 的平台（mini/macOS/MSYS2/Android/MinGW）显式 -Dsacdiso=disabled；release.yml 触发条件 <code>v*-sacd*</code> tag 或手动，产物带 SHA256SUMS，aarch64 包在 QEMU 里跑冒烟验证。CI 配置规范。</li>
+  </ul>
+  <div class="issue low">
+    <h4>BUILD-1（低）ixml 探测用 find_library + has_headers，缺 pkg-config 降级路径</h4>
+    <div class="loc">meson.build:323-329</div>
+    <p>libupnp 在部分发行版提供 <code>libupnp.pc</code>，用 dependency('libupnp') 可获得正确的静态链接传递依赖；find_library 在静态链接场景（raspberrypi 交叉打包用 aarch64.ini）可能漏传递依赖。当前动态链接场景无实际问题。</p>
+  </div>
+</section>
+
+<section id="sec-docs">
+  <h2>7. 文档与测试（8f2c29dd5, 845a59659）</h2>
+  <ul style="margin:.5rem 0 .5rem 1.5rem">
+    <li>README 重写覆盖构建、配置、插件选项（edited_master/single_track/lsbitfirst/playable_area/tags_path/use_stdio 等均有表格），doc/plugins.rst 补充了两个 ALSA 桥接选项——文档与实现核对一致。</li>
+    <li>test/verify_sacd_decode.py（位精确解码验证，对照 SACD 树参考输出）、verify_sacd_playback.py（native DSD 播放 + seek/pause/并发 rescan）、verify_format_switch.py（22 次 PCM↔DSD 切换）设计务实，走 MPD 协议而非内存断言，作为集成验证很到位。</li>
+    <li>install.sh + test/test_install.sh（302 行安装契约测试）和 packaging/raspberrypi（Docker + QEMU 验证）超出个人分支平均水准。</li>
+  </ul>
+  <div class="issue low">
+    <h4>TEST-1（低）验证脚本对环境的硬依赖</h4>
+    <div class="loc">test/verify_sacd_playback.py, run-local.sh</div>
+    <p>播放验证依赖特定 DAC 与本地路径（run-local.sh 的 OUTPUT_NAME、脚本内默认设备名），无硬件时跳过逻辑存在但文档中应标注"位精确解码可无硬件运行、播放验证需 DSD 设备"。另外 verify 脚本未纳入 meson test（合理，避免 CI 依赖硬件），建议在 README 明确分级。</p>
+  </div>
+</section>
+
+<section id="sec-conclusion">
+  <h2>8. 结论与修复优先级</h2>
+  <table>
+    <tr><th>优先级</th><th>编号</th><th>摘要</th><th>位置</th></tr>
+    <tr><td class="sev-high">高</td><td>CORE-1</td><td>NDEBUG 构建下 input_stream 空指针断言路径 + 后缀白名单硬编码</td><td>src/decoder/Thread.cxx:489-498</td></tr>
+    <tr><td class="sev-high">高</td><td>PLG-1</td><td>dvdaiso 插件全局状态缺 thread_local，rescan 与播放竞态 UAF</td><td>DvdaIsoDecoderPlugin.cxx:65-68</td></tr>
+    <tr><td class="sev-high">高</td><td>LIB-1</td><td>sacdiso 区域 TOC 偏移无界校验，畸形 ISO 堆越界读</td><td>sacd_disc.cpp:326-357, 698-704, 721-794</td></tr>
+    <tr><td class="sev-high">高</td><td>LIB-2</td><td>read_frame 扇区头/偏移累计无总量界检查</td><td>sacd_disc.cpp:437-531</td></tr>
+    <tr><td class="sev-high">高</td><td>LIB-8</td><td>dvdaiso UDF/IFO 同类不可信偏移问题</td><td>udf/dvd_udf.cpp, dvda_zone.cpp 等</td></tr>
+    <tr><td class="sev-med">中</td><td>LIB-3</td><td>iconv 描述符泄漏（成功路径）</td><td>sacd_disc.cpp:65-86</td></tr>
+    <tr><td class="sev-med">中</td><td>LIB-4</td><td>read_area_toc 失败路径内存泄漏 + 两 area 失败行为不对称</td><td>sacd_disc.cpp:331-357</td></tr>
+    <tr><td class="sev-med">中</td><td>PLG-2</td><td>get_subsong 无符号回绕，依赖调用方兜底</td><td>SacdIso/DffDecoderPlugin.cxx</td></tr>
+    <tr><td class="sev-low">低</td><td>其余</td><td>逗号表达式残留、Drain 重复 Reset、dsdiff 借名、ixml 探测方式等</td><td>见各节</td></tr>
+  </table>
+  <p><strong>建议的合并策略：</strong>CORE-1 与 PLG-1 是小改动、收益大，应立即修复；LIB 系列建议开一个 hardening 分支集中加边界校验（可参考上游 DsdiffDecoderPlugin 对 chunk 长度的处理方式），不必阻塞当前功能分支的自用；ALSA 桥接与构建/CI/文档部分可原样保留。整体上这是一次<strong>集成质量优秀、底层库健壮性欠账</strong>的移植，提交信息、验证深度和回归防护（000b58c21）都体现了良好的工程习惯。</p>
+</section>
+
+<footer>
+  <p>评审方法：逐文件阅读 a66648876..7dbfc20fb 全部差异中的核心代码（sacdiso/dvdaiso 插件、sacd_disc 解析层、ALSA 桥接、meson/CI 配置），dvdaiso 库为抽查。基于静态评审，未做 fuzzing；LIB 类问题的严重度按"解析不可信输入的守护进程组件"标准评定，若仅解析自 ripped 音乐库可酌情降级。</p>
+</footer>
+
+</div>
+</body>
+</html>
