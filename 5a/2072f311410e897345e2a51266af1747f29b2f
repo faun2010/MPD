@@ -1,0 +1,22 @@
+myclean.sh
+  s_0c18862ed7c1ed::t_deb0dd7e783323 10-23,27-151,153-341,343-359,361-397,399-447
+  s_0c18862ed7c1ed::t_5c5c4602fd3ff1 24-25,152,360,398
+  s_0c18862ed7c1ed::t_7fc6319d8afd26 342
+  s_0c18862ed7c1ed::t_402e1bcdf6e096 1-9,26,448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.7.5",
+  "base_commit_sha": "5a2072f311410e897345e2a51266af1747f29b2f",
+  "prompts": {},
+  "sessions": {
+    "s_0c18862ed7c1ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77f15b1d-2e37-4b2d-8e4e-ef2648bfd4bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "faun <faun2010@gmail.com>"
+    }
+  }
+}
