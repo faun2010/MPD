@@ -39,6 +39,7 @@
 #include <atomic>
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <string>
 #include <forward_list>
 #include <thread>
@@ -708,7 +709,7 @@ AlsaOutput::PlayPcmBridge(const char *direction, unsigned rate, unsigned channel
 		throw std::runtime_error("Invalid PCM bridge format");
 
 	FmtInfo(alsa_output_domain,
-		"{} bridge: start S16 rate={} channels={} frames={}",
+		"{} bridge: start rate={} channels={} frames={}",
 		direction, rate, channels, total_frames);
 
 	const auto deadline = std::chrono::steady_clock::now() +
@@ -747,12 +748,31 @@ AlsaOutput::PlayPcmBridge(const char *direction, unsigned rate, unsigned channel
 	check_alsa(snd_pcm_hw_params_set_access(bridge_pcm, hw,
 					      SND_PCM_ACCESS_RW_INTERLEAVED),
 		   "PCM bridge: interleaved access unavailable");
-	check_alsa(snd_pcm_hw_params_set_format(bridge_pcm, hw, SND_PCM_FORMAT_S16),
-		   "PCM bridge: S16 format unavailable");
 	check_alsa(snd_pcm_hw_params_set_channels(bridge_pcm, hw, channels),
 		   "PCM bridge: exact channel count unavailable");
 	check_alsa(snd_pcm_hw_params_set_rate(bridge_pcm, hw, rate, 0),
 		   "PCM bridge: exact sample rate unavailable");
+
+	/* Some DACs accept only wide PCM samples (e.g. S32_LE-only USB
+	   DACs), so take the first signed format the device supports at
+	   this rate; all-zero bytes are silence in each of them. */
+	static constexpr snd_pcm_format_t bridge_formats[] = {
+		SND_PCM_FORMAT_S16,
+		SND_PCM_FORMAT_S32,
+		SND_PCM_FORMAT_S24,
+		SND_PCM_FORMAT_S24_3LE,
+	};
+	snd_pcm_format_t bridge_format = SND_PCM_FORMAT_UNKNOWN;
+	for (const auto f : bridge_formats) {
+		if (snd_pcm_hw_params_test_format(bridge_pcm, hw, f) == 0) {
+			bridge_format = f;
+			break;
+		}
+	}
+	if (bridge_format == SND_PCM_FORMAT_UNKNOWN)
+		throw std::runtime_error("PCM bridge: no supported PCM sample format");
+	check_alsa(snd_pcm_hw_params_set_format(bridge_pcm, hw, bridge_format),
+		   "PCM bridge: sample format unavailable");
 
 	/* Match the ordinary output's buffer/period timing, while keeping
 	   this half-second stream's allocation and start threshold bounded. */
@@ -783,15 +803,20 @@ AlsaOutput::PlayPcmBridge(const char *direction, unsigned rate, unsigned channel
 	check_alsa(snd_pcm_prepare(bridge_pcm),
 		   "PCM bridge: snd_pcm_prepare() failed");
 	FmtDebug(alsa_output_domain,
-		 "{} bridge: buffer={} period={} start_threshold={}",
-		 direction, bridge_buffer_frames, bridge_period_frames, start_threshold);
+		 "{} bridge: format={} buffer={} period={} start_threshold={}",
+		 direction, snd_pcm_format_name(bridge_format),
+		 bridge_buffer_frames, bridge_period_frames, start_threshold);
 
 	/* Limit the temporary zero buffer to 64 KiB, independent of driver
-	   period sizes.  At 88.2 kHz stereo the usual 11025-frame period fits. */
+	   period sizes.  At 88.2 kHz stereo the usual 11025-frame period fits
+	   for S16; wider formats use proportionally shorter chunks. */
+	const std::size_t frame_size =
+		std::size_t(snd_pcm_format_physical_width(bridge_format) / 8) * channels;
 	const snd_pcm_uframes_t chunk_frames =
-		std::min(bridge_period_frames, snd_pcm_uframes_t(32768 / channels));
-	AllocatedArray<int16_t> zeros{chunk_frames * channels};
-	std::fill(zeros.begin(), zeros.end(), int16_t{});
+		std::min(bridge_period_frames,
+			 snd_pcm_uframes_t(std::max<std::size_t>(1, 65536 / frame_size)));
+	AllocatedArray<std::byte> zeros{chunk_frames * frame_size};
+	std::fill(zeros.begin(), zeros.end(), std::byte{});
 
 	const auto wait_ready = [&](bool draining) {
 		check_progress();
@@ -842,8 +867,9 @@ AlsaOutput::PlayPcmBridge(const char *direction, unsigned rate, unsigned channel
 	check_alsa(snd_pcm_close(std::exchange(bridge_pcm, nullptr)),
 		   "PCM bridge: snd_pcm_close() failed");
 	FmtInfo(alsa_output_domain,
-		"{} bridge: drained and closed rate={} channels={} frames={}",
-		direction, rate, channels, total_frames);
+		"{} bridge: drained and closed format={} rate={} channels={} frames={}",
+		direction, snd_pcm_format_name(bridge_format),
+		rate, channels, total_frames);
 }
 
 void

@@ -1017,21 +1017,23 @@ The `Advanced Linux Sound Architecture (ALSA) <http://www.alsa-project.org/>`_ p
        playback.
    * - **dsd_to_pcm_bridge yes|no**
      - Before changing from native DSD to PCM at a different sample rate,
-       play 500 ms of silent 16-bit PCM at the previous native DSD stream's
+       play 500 ms of silent PCM at the previous native DSD stream's
        ALSA word rate and channel count, drain it, then open the requested
        PCM stream.  This separates the DSD/PCM mode change from the clock
        change for devices which cannot perform both together reliably.
-       The device must support that intermediate PCM format exactly.
+       The silence uses the first of S16, S32, S24 and S24_3LE which the
+       device supports; the rate and channel count must match exactly.
        Defaults to no.  Does not change the playlist or resample the target
        music, and does not apply to DoP, the first open, or PCM-to-DSD changes.
    * - **pcm_to_dsd_bridge yes|no**
      - Before changing from PCM to native DSD at a different ALSA word rate,
-       play 500 ms of silent 16-bit PCM at the target native DSD stream's
+       play 500 ms of silent PCM at the target native DSD stream's
        negotiated word rate and channel count, drain it, then open DSD.
        This changes the clock while still in PCM mode.  Native DSD format
        negotiation is queried before the bridge without applying hardware
-       parameters or starting DSD playback.  The device must support the
-       intermediate PCM format exactly.  Defaults to no; does not apply
+       parameters or starting DSD playback.  The sample format is chosen
+       as for ``dsd_to_pcm_bridge``; the rate and channel count must match
+       exactly.  Defaults to no; does not apply
        to DoP, PCM fallback, or the first output open.  No prior DSD playback
        is required, and the playlist and target music are unchanged.
    * - **allowed_formats F1 F2 ...**
