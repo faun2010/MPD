@@ -1,0 +1,21 @@
+doc/plugins.rst
+  s_59ebc8086e0c51::t_d5178003397bf0 1020,1024-1025,1030,1034-1036
+src/output/plugins/AlsaOutputPlugin.cxx
+  s_59ebc8086e0c51::t_c18bc9143edcf3 42,712,756-776,806-808,811-814,816-819,870-872
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "development:1.7.5",
+  "base_commit_sha": "fc5df75a50298b542278ea8c66aff3d3c6b46512",
+  "prompts": {},
+  "sessions": {
+    "s_59ebc8086e0c51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fc3a687-2ff3-4e3c-9cd3-5551b9e2f2bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "faun <faun2010@gmail.com>"
+    }
+  }
+}
